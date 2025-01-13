@@ -1,4 +1,7 @@
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../theme/ameex_theme.dart';
 import '../widgets/driver_avatar.dart';
@@ -22,7 +25,10 @@ class _AddDriverScreenState extends State<AddDriverScreen> {
 
   String _selectedVehicle = 'Moto / Scooter';
   String _selectedZone = 'Casablanca - Maarif & Anfa';
-  String _selectedAvatarUrl = DriverAvatarHelper.defaultPresets[0].url;
+  String _selectedAvatarUrl = '';
+  Uint8List? _selectedImageBytes;
+  String? _selectedImageName;
+  bool _isPickingImage = false;
   bool _isSubmitting = false;
   bool _obscurePassword = true;
 
@@ -52,6 +58,60 @@ class _AddDriverScreenState extends State<AddDriverScreen> {
     super.dispose();
   }
 
+  Future<void> _pickImageFromGallery() async {
+    setState(() => _isPickingImage = true);
+    try {
+      final picker = ImagePicker();
+      final XFile? image = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 600,
+        maxHeight: 600,
+        imageQuality: 85,
+      );
+
+      if (image != null) {
+        final bytes = await image.readAsBytes();
+        final base64String = 'data:image/jpeg;base64,${base64Encode(bytes)}';
+
+        setState(() {
+          _selectedImageBytes = bytes;
+          _selectedImageName = image.name;
+          _selectedAvatarUrl = base64String;
+        });
+
+        // Supabase storage background upload attempt
+        try {
+          final fileExt = image.name.split('.').last;
+          final fileName = 'driver_${DateTime.now().millisecondsSinceEpoch}.$fileExt';
+          await supabase.storage.from('avatars').uploadBinary(
+            fileName,
+            bytes,
+            fileOptions: const FileOptions(contentType: 'image/jpeg', upsert: true),
+          );
+          final publicUrl = supabase.storage.from('avatars').getPublicUrl(fileName);
+          if (publicUrl.isNotEmpty) {
+            _selectedAvatarUrl = publicUrl;
+          }
+        } catch (_) {
+          // Keep base64 URI
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Impossible d\'ouvrir la galerie: $e'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isPickingImage = false);
+      }
+    }
+  }
+
   Future<void> _handleCreateDriver() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -61,7 +121,10 @@ class _AddDriverScreenState extends State<AddDriverScreen> {
     final email = _emailController.text.trim();
     final password = _passwordController.text;
     final phone = _phoneController.text.trim();
-    final zoneWithAvatar = DriverAvatarHelper.formatWithAvatar(_selectedZone, _selectedAvatarUrl);
+    final effectiveAvatarUrl = _selectedAvatarUrl.isNotEmpty
+        ? _selectedAvatarUrl
+        : DriverAvatarHelper.getAvatarUrl(null, defaultName: fullName);
+    final zoneWithAvatar = DriverAvatarHelper.formatWithAvatar(_selectedZone, effectiveAvatarUrl);
 
     try {
       // 1. Try via RPC function
@@ -240,12 +303,12 @@ class _AddDriverScreenState extends State<AddDriverScreen> {
               ),
               const SizedBox(height: 20),
 
-              // 0. PHOTO DE PROFIL DU LIVREUR (SELECTION PAR L'ADMIN)
+              // 0. PHOTO DE PROFIL DU LIVREUR (SELECTION DEPUIS LA GALERIE)
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF8FAFC),
+                  color: Colors.white,
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(color: const Color(0xFFE2E8F0)),
                 ),
@@ -254,7 +317,7 @@ class _AddDriverScreenState extends State<AddDriverScreen> {
                   children: [
                     Row(
                       children: [
-                        const Icon(Icons.account_circle_rounded, color: AmeexColors.primaryBlue, size: 20),
+                        const Icon(Icons.photo_library_rounded, color: AmeexColors.primaryBlue, size: 20),
                         const SizedBox(width: 8),
                         const Text(
                           'Photo de profil du livreur',
@@ -265,182 +328,190 @@ class _AddDriverScreenState extends State<AddDriverScreen> {
                           ),
                         ),
                         const Spacer(),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFEFF5FF),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: AmeexColors.primaryBlue.withValues(alpha: 0.3)),
+                        if (_selectedImageBytes != null || _selectedAvatarUrl.isNotEmpty)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFECFDF5),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.3)),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.check_circle_rounded, size: 12, color: Color(0xFF10B981)),
+                                SizedBox(width: 4),
+                                Text(
+                                  'Photo prête',
+                                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF10B981)),
+                                ),
+                              ],
+                            ),
                           ),
-                          child: const Text(
-                            'Visible partout',
-                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AmeexColors.primaryBlue),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 14),
-
-                    // Selected Preview & Description
-                    Row(
-                      children: [
-                        DriverAvatar(
-                          avatarUrl: _selectedAvatarUrl,
-                          name: _fullNameController.text.isNotEmpty ? _fullNameController.text : 'Livreur',
-                          radius: 34,
-                          borderColor: AmeexColors.primaryBlue,
-                          borderWidth: 2.5,
-                          showBadge: true,
-                        ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                _fullNameController.text.trim().isNotEmpty
-                                    ? _fullNameController.text.trim()
-                                    : 'Aperçu du Livreur',
-                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF0F172A)),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                'Cette photo s\'affichera lors de l\'affectation des commandes, sur le suivi GPS et dans l\'application.',
-                                style: TextStyle(fontSize: 12, color: Colors.grey.shade600, height: 1.3),
-                              ),
-                            ],
-                          ),
-                        ),
                       ],
                     ),
                     const SizedBox(height: 16),
 
-                    // Horizontal Presets Gallery
-                    const Text(
-                      'Sélectionnez une photo d\'équipe :',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF475569)),
-                    ),
-                    const SizedBox(height: 10),
-                    SizedBox(
-                      height: 100,
-                      child: ListView.separated(
-                        scrollDirection: Axis.horizontal,
-                        itemCount: DriverAvatarHelper.defaultPresets.length,
-                        separatorBuilder: (_, __) => const SizedBox(width: 10),
-                        itemBuilder: (context, index) {
-                          final preset = DriverAvatarHelper.defaultPresets[index];
-                          final isSelected = _selectedAvatarUrl == preset.url;
-
-                          return GestureDetector(
-                            onTap: () {
-                              setState(() {
-                                _selectedAvatarUrl = preset.url;
-                              });
-                            },
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 200),
-                              width: 76,
-                              padding: const EdgeInsets.all(6),
+                    // Avatar Preview + Gallery Action
+                    Row(
+                      children: [
+                        Stack(
+                          children: [
+                            Container(
+                              width: 72,
+                              height: 72,
                               decoration: BoxDecoration(
-                                color: isSelected ? const Color(0xFFEFF5FF) : Colors.white,
-                                borderRadius: BorderRadius.circular(12),
+                                shape: BoxShape.circle,
+                                color: const Color(0xFFEFF5FF),
                                 border: Border.all(
-                                  color: isSelected ? AmeexColors.primaryBlue : const Color(0xFFE2E8F0),
-                                  width: isSelected ? 2 : 1,
+                                  color: (_selectedImageBytes != null || _selectedAvatarUrl.isNotEmpty)
+                                      ? AmeexColors.primaryBlue
+                                      : const Color(0xFFCBD5E1),
+                                  width: 2.5,
                                 ),
-                                boxShadow: isSelected
-                                    ? [
-                                        BoxShadow(
-                                          color: AmeexColors.primaryBlue.withValues(alpha: 0.15),
-                                          blurRadius: 6,
-                                          offset: const Offset(0, 2),
-                                        ),
-                                      ]
-                                    : null,
                               ),
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Stack(
-                                    children: [
-                                      ClipOval(
-                                        child: Image.network(
-                                          preset.url,
-                                          width: 44,
-                                          height: 44,
-                                          fit: BoxFit.cover,
-                                        ),
-                                      ),
-                                      if (isSelected)
-                                        Positioned(
-                                          right: 0,
-                                          bottom: 0,
-                                          child: Container(
-                                            decoration: const BoxDecoration(
-                                              color: AmeexColors.primaryBlue,
-                                              shape: BoxShape.circle,
+                              child: ClipOval(
+                                child: _selectedImageBytes != null
+                                    ? Image.memory(
+                                        _selectedImageBytes!,
+                                        width: 72,
+                                        height: 72,
+                                        fit: BoxFit.cover,
+                                      )
+                                    : _selectedAvatarUrl.isNotEmpty
+                                        ? DriverAvatar(
+                                            avatarUrl: _selectedAvatarUrl,
+                                            name: _fullNameController.text.isNotEmpty
+                                                ? _fullNameController.text
+                                                : 'Livreur',
+                                            radius: 36,
+                                          )
+                                        : const Center(
+                                            child: Icon(
+                                              Icons.person_rounded,
+                                              size: 38,
+                                              color: Color(0xFF94A3B8),
                                             ),
-                                            padding: const EdgeInsets.all(2),
-                                            child: const Icon(Icons.check, size: 10, color: Colors.white),
                                           ),
-                                        ),
-                                    ],
+                              ),
+                            ),
+                            Positioned(
+                              bottom: 0,
+                              right: 0,
+                              child: GestureDetector(
+                                onTap: _isPickingImage ? null : _pickImageFromGallery,
+                                child: Container(
+                                  padding: const EdgeInsets.all(5),
+                                  decoration: const BoxDecoration(
+                                    color: AmeexColors.primaryBlue,
+                                    shape: BoxShape.circle,
                                   ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    preset.label,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                                      color: isSelected ? AmeexColors.primaryBlue : const Color(0xFF334155),
+                                  child: const Icon(
+                                    Icons.add_photo_alternate_rounded,
+                                    size: 14,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(width: 16),
+
+                        // Action button & status
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              AmeexPressable(
+                                onTap: _isPickingImage ? null : _pickImageFromGallery,
+                                child: Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFEFF5FF),
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(
+                                      color: AmeexColors.primaryBlue.withValues(alpha: 0.6),
+                                      width: 1.5,
                                     ),
                                   ),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-
-                    const SizedBox(height: 10),
-                    // Option to paste custom URL
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: TextButton.icon(
-                        icon: const Icon(Icons.link_rounded, size: 16, color: AmeexColors.primaryBlue),
-                        label: const Text('Entrer une URL personnalisée', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AmeexColors.primaryBlue)),
-                        onPressed: () {
-                          final textCtrl = TextEditingController(text: _selectedAvatarUrl);
-                          showDialog(
-                            context: context,
-                            builder: (ctx) => AlertDialog(
-                              title: const Text('URL de la photo', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                              content: TextField(
-                                controller: textCtrl,
-                                decoration: const InputDecoration(
-                                  hintText: 'https://...',
-                                  labelText: 'Lien direct vers l\'image (JPG/PNG)',
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      if (_isPickingImage)
+                                        const SizedBox(
+                                          width: 16,
+                                          height: 16,
+                                          child: CircularProgressIndicator(strokeWidth: 2, color: AmeexColors.primaryBlue),
+                                        )
+                                      else
+                                        const Icon(
+                                          Icons.photo_library_rounded,
+                                          size: 18,
+                                          color: AmeexColors.primaryBlue,
+                                        ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        (_selectedImageBytes != null || _selectedAvatarUrl.isNotEmpty)
+                                            ? 'Changer l\'image (Galerie)'
+                                            : 'Choisir depuis la galerie',
+                                        style: const TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.bold,
+                                          color: AmeexColors.primaryBlue,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
-                              actions: [
-                                TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler')),
-                                ElevatedButton(
-                                  onPressed: () {
-                                    if (textCtrl.text.trim().isNotEmpty) {
-                                      setState(() => _selectedAvatarUrl = textCtrl.text.trim());
-                                    }
-                                    Navigator.pop(ctx);
-                                  },
-                                  child: const Text('Valider'),
+                              const SizedBox(height: 6),
+                              if (_selectedImageName != null) ...[
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        _selectedImageName!,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color: Colors.grey.shade700,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    GestureDetector(
+                                      onTap: () {
+                                        setState(() {
+                                          _selectedImageBytes = null;
+                                          _selectedImageName = null;
+                                          _selectedAvatarUrl = '';
+                                        });
+                                      },
+                                      child: const Text(
+                                        'Supprimer',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.redAccent,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ] else ...[
+                                Text(
+                                  'Sélectionnez une image JPG ou PNG depuis votre appareil.',
+                                  style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
                                 ),
                               ],
-                            ),
-                          );
-                        },
-                      ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),

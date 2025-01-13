@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../theme/ameex_theme.dart';
 
@@ -85,10 +86,10 @@ class DriverAvatarHelper {
     }
 
     if (data is String) {
-      if (data.startsWith('http://') || data.startsWith('https://')) {
+      if (data.startsWith('http://') || data.startsWith('https://') || data.startsWith('data:image')) {
         return data;
       }
-      final tagMatch = RegExp(r'\[AVATAR:(https?://[^\]]+)\]').firstMatch(data);
+      final tagMatch = RegExp(r'\[AVATAR:([^\]]+)\]').firstMatch(data);
       if (tagMatch != null) {
         return tagMatch.group(1)!;
       }
@@ -107,13 +108,13 @@ class DriverAvatarHelper {
       }
 
       final zone = data['zone']?.toString() ?? '';
-      final zoneMatch = RegExp(r'\[AVATAR:(https?://[^\]]+)\]').firstMatch(zone);
+      final zoneMatch = RegExp(r'\[AVATAR:([^\]]+)\]').firstMatch(zone);
       if (zoneMatch != null) {
         return zoneMatch.group(1)!;
       }
 
       final vehicle = data['vehicle_type']?.toString() ?? '';
-      final vehicleMatch = RegExp(r'\[AVATAR:(https?://[^\]]+)\]').firstMatch(vehicle);
+      final vehicleMatch = RegExp(r'\[AVATAR:([^\]]+)\]').firstMatch(vehicle);
       if (vehicleMatch != null) {
         return vehicleMatch.group(1)!;
       }
@@ -168,6 +169,71 @@ class DriverAvatar extends StatelessWidget {
     this.badgeColor,
   });
 
+  Widget _buildFallback(String effectiveName) {
+    final initial = effectiveName.trim().isNotEmpty
+        ? effectiveName.trim()[0].toUpperCase()
+        : 'L';
+    return Container(
+      color: AmeexColors.primaryBlue,
+      alignment: Alignment.center,
+      child: Text(
+        initial,
+        style: TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.bold,
+          fontSize: radius * 0.9,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildImageContent(String effectiveUrl, String effectiveName) {
+    if (effectiveUrl.startsWith('data:image')) {
+      try {
+        final commaIdx = effectiveUrl.indexOf(',');
+        final b64 = commaIdx != -1 ? effectiveUrl.substring(commaIdx + 1) : effectiveUrl;
+        final bytes = base64Decode(b64);
+        return Image.memory(
+          bytes,
+          fit: BoxFit.cover,
+          width: radius * 2,
+          height: radius * 2,
+          errorBuilder: (context, error, stackTrace) => _buildFallback(effectiveName),
+        );
+      } catch (_) {
+        return _buildFallback(effectiveName);
+      }
+    }
+
+    return Image.network(
+      effectiveUrl,
+      fit: BoxFit.cover,
+      width: radius * 2,
+      height: radius * 2,
+      errorBuilder: (context, error, stackTrace) => _buildFallback(effectiveName),
+      loadingBuilder: (context, child, loadingProgress) {
+        if (loadingProgress == null) return child;
+        return Container(
+          color: const Color(0xFFEFF5FF),
+          child: Center(
+            child: SizedBox(
+              width: radius,
+              height: radius,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                value: loadingProgress.expectedTotalBytes != null
+                    ? loadingProgress.cumulativeBytesLoaded /
+                        loadingProgress.expectedTotalBytes!
+                    : null,
+                color: AmeexColors.primaryBlue,
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final effectiveName = name ??
@@ -193,49 +259,7 @@ class DriverAvatar extends StatelessWidget {
         ],
       ),
       child: ClipOval(
-        child: Image.network(
-          effectiveUrl,
-          fit: BoxFit.cover,
-          width: radius * 2,
-          height: radius * 2,
-          errorBuilder: (context, error, stackTrace) {
-            final initial = effectiveName.trim().isNotEmpty
-                ? effectiveName.trim()[0].toUpperCase()
-                : 'L';
-            return Container(
-              color: AmeexColors.primaryBlue,
-              alignment: Alignment.center,
-              child: Text(
-                initial,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: radius * 0.9,
-                ),
-              ),
-            );
-          },
-          loadingBuilder: (context, child, loadingProgress) {
-            if (loadingProgress == null) return child;
-            return Container(
-              color: const Color(0xFFEFF5FF),
-              child: Center(
-                child: SizedBox(
-                  width: radius,
-                  height: radius,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    value: loadingProgress.expectedTotalBytes != null
-                        ? loadingProgress.cumulativeBytesLoaded /
-                            loadingProgress.expectedTotalBytes!
-                        : null,
-                    color: AmeexColors.primaryBlue,
-                  ),
-                ),
-              ),
-            );
-          },
-        ),
+        child: _buildImageContent(effectiveUrl, effectiveName),
       ),
     );
 
