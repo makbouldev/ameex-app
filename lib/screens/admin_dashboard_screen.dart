@@ -306,6 +306,11 @@ class _AdminDashboardHomeTabState extends State<AdminDashboardHomeTab> {
                         ],
                       ),
 
+                      const SizedBox(height: 20),
+
+                      // SECTION: EQUIPE DES LIVREURS AMEEX (DATA LIVREURS EN DIRECT)
+                      _buildDriversSection(context, primaryBlue, orders),
+
                       const SizedBox(height: 24),
 
                       // Section Title
@@ -413,6 +418,215 @@ class _AdminDashboardHomeTabState extends State<AdminDashboardHomeTab> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildDriversSection(BuildContext context, Color primaryBlue, List<Map<String, dynamic>> orders) {
+    return StreamBuilder<List<Map<String, dynamic>>>(
+      stream: supabase
+          .from('profiles')
+          .stream(primaryKey: ['id'])
+          .eq('role', 'driver'),
+      builder: (context, snapshot) {
+        final drivers = snapshot.data ?? [];
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: AmeexColors.lightBlue,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(Icons.two_wheeler_rounded, color: AmeexColors.primaryBlue, size: 18),
+                    ),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Équipe des Livreurs',
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF0F172A),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEFF5FF),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: const Color(0xFFBFDBFE)),
+                      ),
+                      child: Text(
+                        '${drivers.length} livreur(s)',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: AmeexColors.primaryBlue,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                TextButton.icon(
+                  icon: const Icon(Icons.person_add_rounded, size: 16),
+                  label: const Text('Ajouter', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                  style: TextButton.styleFrom(
+                    foregroundColor: AmeexColors.primaryBlue,
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    backgroundColor: const Color(0xFFEFF5FF),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      AmeexPageRoute(page: const AddDriverScreen()),
+                    );
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            if (drivers.isEmpty)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: const Center(
+                  child: Text(
+                    'Aucun livreur enregistré pour le moment.\nCliquez sur "+ Ajouter" pour créer un profil livreur.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Color(0xFF64748B), fontSize: 13),
+                  ),
+                ),
+              )
+            else
+              SizedBox(
+                height: 140,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: drivers.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 12),
+                  itemBuilder: (context, index) {
+                    final d = drivers[index];
+                    final name = d['full_name'] ?? 'Livreur';
+                    final phone = d['phone'] ?? 'Non renseigné';
+                    final vehicle = DriverAvatarHelper.cleanVehicle(d['vehicle_type']);
+                    final zone = DriverAvatarHelper.cleanZone(d['zone']);
+                    final dId = d['id'];
+
+                    // Calculate active orders for this driver
+                    final activeMissions = orders.where((o) =>
+                        o['assigned_driver_id'] == dId &&
+                        o['status'] != 'delivered' &&
+                        o['status'] != 'cancelled').length;
+
+                    return Container(
+                      width: 260,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.03),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              DriverAvatar(
+                                driverData: d,
+                                radius: 20,
+                                borderColor: AmeexColors.primaryBlue,
+                                borderWidth: 1.5,
+                                showBadge: true,
+                                badgeColor: const Color(0xFF10B981),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      name,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF0F172A)),
+                                    ),
+                                    const SizedBox(height: 1),
+                                    Text(
+                                      phone,
+                                      style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: activeMissions > 0 ? const Color(0xFFEFF5FF) : const Color(0xFFF1F5F9),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  '$activeMissions mission(s)',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: activeMissions > 0 ? AmeexColors.primaryBlue : const Color(0xFF64748B),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const Spacer(),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF8FAFC),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.two_wheeler_rounded, size: 13, color: Color(0xFF475569)),
+                                const SizedBox(width: 4),
+                                Expanded(
+                                  child: Text(
+                                    '$vehicle • $zone',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(fontSize: 10, color: Color(0xFF475569), fontWeight: FontWeight.w500),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 }
@@ -542,6 +756,7 @@ class _AdminLiveTrackingTabState extends State<AdminLiveTrackingTab> {
   Map<String, Map<String, dynamic>> _drivers = {};
   Map<String, LatLng> _driverPositions = {};
   List<Map<String, dynamic>> _activeOrders = [];
+  int _selectedTrackingTab = 0; // 0 = Livreurs, 1 = Cartes Clients
   final LatLng _center = const LatLng(33.5892, -7.6324);
 
   @override
@@ -569,17 +784,23 @@ class _AdminLiveTrackingTabState extends State<AdminLiveTrackingTab> {
         }
       }
 
-      // Fetch active orders to display client destination pins and routes
+      // Fetch all relevant orders (active missions or any order with a pinned client location)
       final orders = await supabase
           .from('orders')
           .select()
-          .filter('status', 'in', ['in_transit', 'accepted']);
+          .order('created_at', ascending: false);
+
+      final activeOrLocated = orders.where((o) {
+        final st = o['status']?.toString();
+        final hasLocation = o['dest_latitude'] != null && o['dest_longitude'] != null;
+        return st == 'in_transit' || st == 'accepted' || st == 'pending' || hasLocation;
+      }).toList();
 
       if (mounted) {
         setState(() {
           _drivers = pMap;
           _driverPositions = posMap;
-          _activeOrders = List<Map<String, dynamic>>.from(orders);
+          _activeOrders = List<Map<String, dynamic>>.from(activeOrLocated);
         });
       }
 
@@ -598,13 +819,15 @@ class _AdminLiveTrackingTabState extends State<AdminLiveTrackingTab> {
         });
       });
 
-      // Live subscription to orders (reflects driver pinpointing client location in real time!)
+      // Live subscription to orders (reflects new orders & driver pinpointing client location in real time!)
       supabase.from('orders').stream(primaryKey: ['id']).listen((data) {
         if (!mounted) return;
         setState(() {
-          _activeOrders = data
-              .where((o) => o['status'] == 'in_transit' || o['status'] == 'accepted')
-              .toList();
+          _activeOrders = data.where((o) {
+            final st = o['status']?.toString();
+            final hasLocation = o['dest_latitude'] != null && o['dest_longitude'] != null;
+            return st == 'in_transit' || st == 'accepted' || st == 'pending' || hasLocation;
+          }).toList();
         });
       });
     } catch (_) {}
@@ -768,186 +991,80 @@ class _AdminLiveTrackingTabState extends State<AdminLiveTrackingTab> {
             ),
           ),
 
-          // Drivers List & Active Mission Cards
+          // Drivers & Clients Bottom Panel (Dual Tab View)
           Expanded(
             flex: 4,
             child: Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(14),
               color: Colors.white,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Dual Selector: Livreurs vs Cartes Clients
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('Livreurs actifs sur le terrain', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                      ChoiceChip(
+                        label: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.two_wheeler_rounded, size: 14),
+                            const SizedBox(width: 4),
+                            Text('Livreurs (${_drivers.length})'),
+                          ],
+                        ),
+                        selected: _selectedTrackingTab == 0,
+                        selectedColor: deepNavy,
+                        backgroundColor: const Color(0xFFF1F5F9),
+                        labelStyle: TextStyle(
+                          color: _selectedTrackingTab == 0 ? Colors.white : const Color(0xFF334155),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                        onSelected: (_) => setState(() => _selectedTrackingTab = 0),
+                      ),
+                      const SizedBox(width: 8),
+                      ChoiceChip(
+                        label: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.location_on_rounded, size: 14),
+                            const SizedBox(width: 4),
+                            Text('Cartes Clients (${_activeOrders.length})'),
+                          ],
+                        ),
+                        selected: _selectedTrackingTab == 1,
+                        selectedColor: deepNavy,
+                        backgroundColor: const Color(0xFFF1F5F9),
+                        labelStyle: TextStyle(
+                          color: _selectedTrackingTab == 1 ? Colors.white : const Color(0xFF334155),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                        onSelected: (_) => setState(() => _selectedTrackingTab = 1),
+                      ),
+                      const Spacer(),
                       if (ordersWithDestination.isNotEmpty)
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                           decoration: BoxDecoration(
                             color: const Color(0xFFDCFCE7),
                             borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: const Color(0xFF86EFAC)),
                           ),
                           child: Text(
-                            '${ordersWithDestination.length} destination(s) fixée(s)',
-                            style: const TextStyle(color: Color(0xFF166534), fontSize: 11, fontWeight: FontWeight.bold),
+                            '${ordersWithDestination.length} sur la carte',
+                            style: const TextStyle(color: Color(0xFF166534), fontSize: 10, fontWeight: FontWeight.bold),
                           ),
                         ),
                     ],
                   ),
                   const SizedBox(height: 10),
+
+                  // TAB CONTENT
                   Expanded(
-                    child: _drivers.isEmpty
-                        ? const Center(child: Text('Aucun livreur connecté', style: TextStyle(color: Colors.grey)))
-                        : ListView.separated(
-                            itemCount: _drivers.length,
-                            separatorBuilder: (_, __) => const SizedBox(height: 8),
-                            itemBuilder: (context, index) {
-                              final dId = _drivers.keys.elementAt(index);
-                              final p = _drivers[dId]!;
-                              final name = p['full_name'] ?? 'Livreur';
-                              final hasGps = _driverPositions.containsKey(dId);
-
-                              // Check if driver has an active assigned order
-                              final matchingOrders = _activeOrders.where((o) => o['assigned_driver_id'] == dId).toList();
-                              final Map<String, dynamic>? activeOrder = matchingOrders.isNotEmpty ? matchingOrders.first : null;
-                              final bool hasClientPin = activeOrder != null &&
-                                  activeOrder['dest_latitude'] != null &&
-                                  activeOrder['dest_longitude'] != null;
-
-                              return Container(
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFF8FAFC),
-                                  borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(color: const Color(0xFFE2E8F0)),
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        DriverAvatar(
-                                          driverData: p,
-                                          radius: 20,
-                                          borderColor: deepNavy,
-                                          borderWidth: 1.5,
-                                          showBadge: true,
-                                          badgeColor: hasGps ? const Color(0xFF10B981) : Colors.orange,
-                                        ),
-                                        const SizedBox(width: 10),
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                                              Text(
-                                                hasGps ? 'GPS Livreur actif' : 'En attente de signal GPS',
-                                                style: TextStyle(
-                                                  color: hasGps ? const Color(0xFF10B981) : Colors.orange,
-                                                  fontSize: 11,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                        IconButton(
-                                          icon: const Icon(Icons.gps_fixed, color: deepNavy, size: 20),
-                                          tooltip: 'Centrer sur le livreur',
-                                          onPressed: () {
-                                            if (hasGps) {
-                                              _mapController.move(_driverPositions[dId]!, 15.5);
-                                            }
-                                          },
-                                        ),
-                                      ],
-                                    ),
-
-                                    // ACTIVE MISSION DETAILS & CLIENT PIN STATUS
-                                    if (activeOrder != null) ...[
-                                      const Divider(height: 14, color: Color(0xFFE2E8F0)),
-                                      Row(
-                                        children: [
-                                          const Icon(Icons.inventory_2_outlined, size: 16, color: deepNavy),
-                                          const SizedBox(width: 6),
-                                          Expanded(
-                                            child: Text(
-                                              'Mission : ${activeOrder['customer_name'] ?? 'Client'} (${activeOrder['tracking_number'] ?? '#AMX'})',
-                                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: deepNavy),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        'Adresse : ${activeOrder['delivery_address'] ?? 'Non spécifiée'}',
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
-                                      ),
-                                      const SizedBox(height: 6),
-                                      if (hasClientPin) ...[
-                                        Row(
-                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                          children: [
-                                            Container(
-                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                              decoration: BoxDecoration(
-                                                color: const Color(0xFFDCFCE7),
-                                                borderRadius: BorderRadius.circular(6),
-                                                border: Border.all(color: const Color(0xFF86EFAC)),
-                                              ),
-                                              child: Row(
-                                                children: [
-                                                  const Icon(Icons.location_on, size: 12, color: Color(0xFF16A34A)),
-                                                  const SizedBox(width: 4),
-                                                  Text(
-                                                    'Point Client : ${(activeOrder['dest_latitude'] as num).toDouble().toStringAsFixed(4)}, ${(activeOrder['dest_longitude'] as num).toDouble().toStringAsFixed(4)}',
-                                                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF166534)),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                            TextButton.icon(
-                                              style: TextButton.styleFrom(padding: EdgeInsets.zero, visualDensity: VisualDensity.compact),
-                                              icon: const Icon(Icons.alt_route_rounded, size: 16, color: Color(0xFF1D4ED8)),
-                                              label: const Text('Voir le trajet', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF1D4ED8))),
-                                              onPressed: () {
-                                                final cPos = LatLng(
-                                                  (activeOrder['dest_latitude'] as num).toDouble(),
-                                                  (activeOrder['dest_longitude'] as num).toDouble(),
-                                                );
-                                                if (hasGps) {
-                                                  final dPos = _driverPositions[dId]!;
-                                                  final midLat = (dPos.latitude + cPos.latitude) / 2;
-                                                  final midLng = (dPos.longitude + cPos.longitude) / 2;
-                                                  _mapController.move(LatLng(midLat, midLng), 14.5);
-                                                } else {
-                                                  _mapController.move(cPos, 16.0);
-                                                }
-                                              },
-                                            ),
-                                          ],
-                                        ),
-                                      ] else ...[
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                          decoration: BoxDecoration(
-                                            color: const Color(0xFFFEF3C7),
-                                            borderRadius: BorderRadius.circular(6),
-                                          ),
-                                          child: const Text(
-                                            '⏳ En attente du pointage de destination par le livreur',
-                                            style: TextStyle(fontSize: 10, color: Color(0xFF92400E), fontWeight: FontWeight.w600),
-                                          ),
-                                        ),
-                                      ],
-                                    ],
-                                  ],
-                                ),
-                              );
-                            },
-                          ),
+                    child: _selectedTrackingTab == 0
+                        ? _buildDriversTrackingList(deepNavy)
+                        : _buildClientCardsTrackingList(deepNavy),
                   ),
                 ],
               ),
@@ -955,6 +1072,336 @@ class _AdminLiveTrackingTabState extends State<AdminLiveTrackingTab> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildDriversTrackingList(Color deepNavy) {
+    if (_drivers.isEmpty) {
+      return const Center(child: Text('Aucun livreur connecté', style: TextStyle(color: Colors.grey)));
+    }
+
+    return ListView.separated(
+      itemCount: _drivers.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 8),
+      itemBuilder: (context, index) {
+        final dId = _drivers.keys.elementAt(index);
+        final p = _drivers[dId]!;
+        final name = p['full_name'] ?? 'Livreur';
+        final hasGps = _driverPositions.containsKey(dId);
+
+        // Check if driver has an active assigned order
+        final matchingOrders = _activeOrders.where((o) => o['assigned_driver_id'] == dId).toList();
+        final Map<String, dynamic>? activeOrder = matchingOrders.isNotEmpty ? matchingOrders.first : null;
+        final bool hasClientPin = activeOrder != null &&
+            activeOrder['dest_latitude'] != null &&
+            activeOrder['dest_longitude'] != null;
+
+        return Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  DriverAvatar(
+                    driverData: p,
+                    radius: 20,
+                    borderColor: deepNavy,
+                    borderWidth: 1.5,
+                    showBadge: true,
+                    badgeColor: hasGps ? const Color(0xFF10B981) : Colors.orange,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                        Text(
+                          hasGps ? 'GPS Livreur actif' : 'En attente de signal GPS',
+                          style: TextStyle(
+                            color: hasGps ? const Color(0xFF10B981) : Colors.orange,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.gps_fixed, color: AmeexColors.primaryBlue, size: 20),
+                    tooltip: 'Centrer sur le livreur',
+                    onPressed: () {
+                      if (hasGps) {
+                        _mapController.move(_driverPositions[dId]!, 15.5);
+                      }
+                    },
+                  ),
+                ],
+              ),
+
+              // ACTIVE MISSION DETAILS & CLIENT PIN STATUS
+              if (activeOrder != null) ...[
+                const Divider(height: 14, color: Color(0xFFE2E8F0)),
+                Row(
+                  children: [
+                    const Icon(Icons.inventory_2_outlined, size: 16, color: AmeexColors.primaryBlue),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        'Mission : ${activeOrder['customer_name'] ?? 'Client'} (${activeOrder['tracking_number'] ?? '#AMX'})',
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AmeexColors.primaryBlue),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Adresse : ${activeOrder['delivery_address'] ?? 'Non spécifiée'}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                ),
+                const SizedBox(height: 6),
+                if (hasClientPin) ...[
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFDCFCE7),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: const Color(0xFF86EFAC)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.location_on, size: 12, color: Color(0xFF16A34A)),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Point Client : ${(activeOrder['dest_latitude'] as num).toDouble().toStringAsFixed(4)}, ${(activeOrder['dest_longitude'] as num).toDouble().toStringAsFixed(4)}',
+                              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF166534)),
+                            ),
+                          ],
+                        ),
+                      ),
+                      TextButton.icon(
+                        style: TextButton.styleFrom(padding: EdgeInsets.zero, visualDensity: VisualDensity.compact),
+                        icon: const Icon(Icons.alt_route_rounded, size: 16, color: Color(0xFF1D4ED8)),
+                        label: const Text('Voir le trajet', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF1D4ED8))),
+                        onPressed: () {
+                          final cPos = LatLng(
+                            (activeOrder['dest_latitude'] as num).toDouble(),
+                            (activeOrder['dest_longitude'] as num).toDouble(),
+                          );
+                          if (hasGps) {
+                            final dPos = _driverPositions[dId]!;
+                            final midLat = (dPos.latitude + cPos.latitude) / 2;
+                            final midLng = (dPos.longitude + cPos.longitude) / 2;
+                            _mapController.move(LatLng(midLat, midLng), 14.5);
+                          } else {
+                            _mapController.move(cPos, 16.0);
+                          }
+                        },
+                      ),
+                    ],
+                  ),
+                ] else ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFEF3C7),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Text(
+                      '⏳ En attente du pointage de destination sur la carte',
+                      style: TextStyle(fontSize: 10, color: Color(0xFF92400E), fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ],
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildClientCardsTrackingList(Color deepNavy) {
+    if (_activeOrders.isEmpty) {
+      return const Center(
+        child: Text(
+          'Aucune commande client enregistrée.',
+          style: TextStyle(color: Colors.grey, fontSize: 13),
+        ),
+      );
+    }
+
+    return ListView.separated(
+      itemCount: _activeOrders.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 8),
+      itemBuilder: (context, index) {
+        final order = _activeOrders[index];
+        final customerName = order['customer_name'] ?? 'Client';
+        final phone = order['customer_phone'] ?? 'Non renseigné';
+        final rawAddress = order['delivery_address'] ?? 'Casablanca';
+        final address = ParcelHelper.cleanAddress(rawAddress.toString());
+        final parcelNumber = ParcelHelper.getParcelNumber(order);
+        final tracking = order['tracking_number'] ?? '#AMX';
+        final amount = order['amount'] ?? 0;
+        final status = order['status'] ?? 'pending';
+        final dId = order['assigned_driver_id'];
+        final dData = dId != null ? _drivers[dId] : null;
+        final hasPin = order['dest_latitude'] != null && order['dest_longitude'] != null;
+
+        return Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: hasPin ? const Color(0xFF86EFAC) : const Color(0xFFE2E8F0),
+              width: hasPin ? 1.5 : 1.0,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Client Header: Name, Tracking, Amount & Status
+              Row(
+                children: [
+                  CircleAvatar(
+                    radius: 16,
+                    backgroundColor: AmeexColors.lightBlue,
+                    child: Text(
+                      customerName.isNotEmpty ? customerName[0].toUpperCase() : 'C',
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AmeexColors.primaryBlue),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '$customerName ($tracking)',
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF0F172A)),
+                        ),
+                        Text(
+                          'Tél : $phone',
+                          style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        '$amount MAD',
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AmeexColors.primaryBlue),
+                      ),
+                      const SizedBox(height: 2),
+                      _buildStatusBadge(status),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+
+              // Address & Parcel Number
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEFF5FF),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      parcelNumber,
+                      style: const TextStyle(fontSize: 10, fontFamily: 'monospace', fontWeight: FontWeight.bold, color: AmeexColors.primaryBlue),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      'Adresse : $address',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 11, color: Color(0xFF475569)),
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 8),
+
+              // Assigned Driver & Map Pin Action
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  // Driver Info
+                  if (dData != null)
+                    Row(
+                      children: [
+                        DriverAvatar(
+                          driverData: dData,
+                          radius: 11,
+                          borderColor: AmeexColors.primaryBlue,
+                          borderWidth: 1,
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          dData['full_name'] ?? 'Livreur',
+                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF334155)),
+                        ),
+                      ],
+                    )
+                  else
+                    const Text('Non assigné', style: TextStyle(fontSize: 11, color: Colors.grey)),
+
+                  // Pinned Status & Button
+                  if (hasPin) ...[
+                    ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF10B981),
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      icon: const Icon(Icons.my_location_rounded, size: 14),
+                      label: const Text('Voir sur la carte', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                      onPressed: () {
+                        final lat = (order['dest_latitude'] as num).toDouble();
+                        final lng = (order['dest_longitude'] as num).toDouble();
+                        _mapController.move(LatLng(lat, lng), 16.5);
+                      },
+                    ),
+                  ] else ...[
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFEF3C7),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: const Text(
+                        'En attente GPS',
+                        style: TextStyle(fontSize: 10, color: Color(0xFF92400E), fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
