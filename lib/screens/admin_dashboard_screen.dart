@@ -9,6 +9,7 @@ import '../widgets/parcel_scanner_dialog.dart';
 import 'add_order_screen.dart';
 import 'add_driver_screen.dart';
 import 'route_history_screen.dart';
+import '../widgets/caisse_remittance_helper.dart';
 
 class AdminDriverCache {
   static final Map<String, Map<String, dynamic>> _cache = {};
@@ -421,6 +422,150 @@ class _AdminDashboardHomeTabState extends State<AdminDashboardHomeTab> {
     );
   }
 
+  void _showValidateRemittanceDialog(
+    BuildContext context,
+    Map<String, dynamic> driver,
+    DriverCaisseBalances balances,
+    List<Map<String, dynamic>> driverOrders,
+  ) {
+    final name = driver['full_name'] ?? 'Livreur';
+    final driverId = driver['id'];
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFDCFCE7),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.check_circle_rounded, color: Color(0xFF16A34A), size: 24),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text(
+                'Validation Versement Caisse',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17, color: Color(0xFF0F172A)),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                DriverAvatar(
+                  driverData: driver,
+                  radius: 20,
+                  borderColor: AmeexColors.primaryBlue,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                      Text('${balances.unremittedCount} colis livré(s) à encaisser', style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFFBEB),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFFDE68A)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Montant d\'espèces reçu du livreur (COD) :', style: TextStyle(fontSize: 12, color: Color(0xFF92400E))),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${balances.codToRemitToAgency.toStringAsFixed(2)} MAD',
+                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFFB45309)),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEFF5FF),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFBFDBFE)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.info_rounded, color: AmeexColors.primaryBlue, size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'En confirmant la réception de ces espèces, la commission de +${balances.pendingCommission.toStringAsFixed(2)} MAD sera automatiquement débloquée pour $name.',
+                      style: const TextStyle(fontSize: 11, color: Color(0xFF1E3A8A)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Annuler', style: TextStyle(color: Color(0xFF64748B))),
+          ),
+          ElevatedButton.icon(
+            icon: const Icon(Icons.verified_rounded, size: 18),
+            label: const Text('Confirmer la Réception', style: TextStyle(fontWeight: FontWeight.bold)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF10B981),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            ),
+            onPressed: () async {
+              Navigator.of(ctx).pop();
+              try {
+                final count = await CaisseRemittanceHelper.validateDriverRemittance(
+                  supabase: supabase,
+                  driverId: driverId,
+                  orders: driverOrders,
+                );
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('✅ Versement de ${balances.codToRemitToAgency.toStringAsFixed(2)} MAD validé pour $name ($count colis) ! Commission débloquée.'),
+                      backgroundColor: const Color(0xFF10B981),
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Erreur lors de la validation: $e'), backgroundColor: Colors.red),
+                  );
+                }
+              }
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildDriversSection(BuildContext context, Color primaryBlue, List<Map<String, dynamic>> orders) {
     return StreamBuilder<List<Map<String, dynamic>>>(
       stream: supabase
@@ -512,7 +657,7 @@ class _AdminDashboardHomeTabState extends State<AdminDashboardHomeTab> {
               )
             else
               SizedBox(
-                height: 140,
+                height: 175,
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
                   itemCount: drivers.length,
@@ -531,13 +676,18 @@ class _AdminDashboardHomeTabState extends State<AdminDashboardHomeTab> {
                         o['status'] != 'delivered' &&
                         o['status'] != 'cancelled').length;
 
+                    final driverOrders = orders.where((o) => o['assigned_driver_id'] == dId).toList();
+                    final balances = CaisseRemittanceHelper.calculateBalances(driverOrders);
+
                     return Container(
-                      width: 260,
+                      width: 275,
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                        border: Border.all(
+                          color: balances.codToRemitToAgency > 0 ? const Color(0xFFFDE68A) : const Color(0xFFE2E8F0),
+                        ),
                         boxShadow: [
                           BoxShadow(
                             color: Colors.black.withValues(alpha: 0.03),
@@ -595,10 +745,64 @@ class _AdminDashboardHomeTabState extends State<AdminDashboardHomeTab> {
                               ),
                             ],
                           ),
+                          const SizedBox(height: 8),
+
+                          // CAISSE REMITTANCE STATUS & ACTION
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: balances.codToRemitToAgency > 0 ? const Color(0xFFFFFBEB) : const Color(0xFFF0FDF4),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: balances.codToRemitToAgency > 0 ? const Color(0xFFFDE68A) : const Color(0xFFBBF7D0),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Row(
+                                  children: [
+                                    Icon(
+                                      balances.codToRemitToAgency > 0 ? Icons.monetization_on_rounded : Icons.check_circle_rounded,
+                                      size: 14,
+                                      color: balances.codToRemitToAgency > 0 ? const Color(0xFFD97706) : const Color(0xFF16A34A),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      balances.codToRemitToAgency > 0
+                                          ? 'Caisse: ${balances.codToRemitToAgency.toStringAsFixed(0)} MAD'
+                                          : 'Caisse à jour',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                        color: balances.codToRemitToAgency > 0 ? const Color(0xFFB45309) : const Color(0xFF16A34A),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                if (balances.codToRemitToAgency > 0)
+                                  InkWell(
+                                    onTap: () => _showValidateRemittanceDialog(context, d, balances, driverOrders),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF10B981),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: const Text(
+                                        'Valider',
+                                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+
                           const Spacer(),
                           Container(
                             width: double.infinity,
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(
                               color: const Color(0xFFF8FAFC),
                               borderRadius: BorderRadius.circular(8),
@@ -1617,72 +1821,177 @@ class AdminProfileTab extends StatelessWidget {
             // Drivers List Stream
             StreamBuilder<List<Map<String, dynamic>>>(
               stream: supabase
-                  .from('profiles')
-                  .stream(primaryKey: ['id'])
-                  .eq('role', 'driver'),
-              builder: (context, snapshot) {
-                final drivers = snapshot.data ?? [];
+                  .from('orders')
+                  .stream(primaryKey: ['id']),
+              builder: (context, ordersSnap) {
+                final allOrders = ordersSnap.data ?? [];
 
-                if (drivers.isEmpty) {
-                  return Container(
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Center(
-                      child: Text('Aucun livreur enregistré pour le moment.'),
-                    ),
-                  );
-                }
+                return StreamBuilder<List<Map<String, dynamic>>>(
+                  stream: supabase
+                      .from('profiles')
+                      .stream(primaryKey: ['id'])
+                      .eq('role', 'driver'),
+                  builder: (context, snapshot) {
+                    final drivers = snapshot.data ?? [];
 
-                return ListView.separated(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: drivers.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 10),
-                  itemBuilder: (context, index) {
-                    final d = drivers[index];
-                    final name = d['full_name'] ?? 'Livreur';
-                    final phone = d['phone'] ?? 'Non renseigné';
-                    final vehicle = d['vehicle_type'] ?? 'Moto / Scooter';
-                    final zone = d['zone'] ?? 'Casablanca';
+                    if (drivers.isEmpty) {
+                      return Container(
+                        padding: const EdgeInsets.all(24),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Center(
+                          child: Text('Aucun livreur enregistré pour le moment.'),
+                        ),
+                      );
+                    }
 
-                    return Container(
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: const Color(0xFFE2E8F0)),
-                      ),
-                      child: Row(
-                        children: [
-                          DriverAvatar(
-                            driverData: d,
-                            radius: 22,
-                            borderColor: deepNavy,
-                            borderWidth: 2,
-                            showBadge: true,
-                            badgeColor: const Color(0xFF10B981),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                                const SizedBox(height: 2),
-                                Text(
-                                  '${DriverAvatarHelper.cleanVehicle(vehicle)} • ${DriverAvatarHelper.cleanZone(zone)}',
-                                  style: const TextStyle(color: Color(0xFF64748B), fontSize: 12),
-                                ),
-                                const SizedBox(height: 2),
-                                Text('📞 $phone', style: const TextStyle(color: Color(0xFF10B981), fontSize: 12, fontWeight: FontWeight.w600)),
-                              ],
+                    return ListView.separated(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: drivers.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: 10),
+                      itemBuilder: (context, index) {
+                        final d = drivers[index];
+                        final name = d['full_name'] ?? 'Livreur';
+                        final phone = d['phone'] ?? 'Non renseigné';
+                        final vehicle = d['vehicle_type'] ?? 'Moto / Scooter';
+                        final zone = d['zone'] ?? 'Casablanca';
+                        final dId = d['id'];
+
+                        final driverOrders = allOrders.where((o) => o['assigned_driver_id'] == dId).toList();
+                        final balances = CaisseRemittanceHelper.calculateBalances(driverOrders);
+
+                        return Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: balances.codToRemitToAgency > 0 ? const Color(0xFFFDE68A) : const Color(0xFFE2E8F0),
                             ),
                           ),
-                        ],
-                      ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  DriverAvatar(
+                                    driverData: d,
+                                    radius: 22,
+                                    borderColor: deepNavy,
+                                    borderWidth: 2,
+                                    showBadge: true,
+                                    badgeColor: const Color(0xFF10B981),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          '${DriverAvatarHelper.cleanVehicle(vehicle)} • ${DriverAvatarHelper.cleanZone(zone)}',
+                                          style: const TextStyle(color: Color(0xFF64748B), fontSize: 12),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text('📞 $phone', style: const TextStyle(color: Color(0xFF10B981), fontSize: 12, fontWeight: FontWeight.w600)),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 10),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: balances.codToRemitToAgency > 0 ? const Color(0xFFFFFBEB) : const Color(0xFFF0FDF4),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: balances.codToRemitToAgency > 0 ? const Color(0xFFFDE68A) : const Color(0xFFBBF7D0),
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          balances.codToRemitToAgency > 0
+                                              ? 'Caisse Espèces (COD) à encaisser :'
+                                              : 'Caisse Agence :',
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            color: balances.codToRemitToAgency > 0 ? const Color(0xFF92400E) : const Color(0xFF166534),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          balances.codToRemitToAgency > 0
+                                              ? '${balances.codToRemitToAgency.toStringAsFixed(2)} MAD'
+                                              : '✅ À jour (${balances.codRemittedToAgency.toStringAsFixed(0)} MAD)',
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.bold,
+                                            color: balances.codToRemitToAgency > 0 ? const Color(0xFFB45309) : const Color(0xFF16A34A),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    if (balances.codToRemitToAgency > 0)
+                                      ElevatedButton.icon(
+                                        icon: const Icon(Icons.check_circle_rounded, size: 14),
+                                        label: const Text('Valider Caisse', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: const Color(0xFF10B981),
+                                          foregroundColor: Colors.white,
+                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                        ),
+                                        onPressed: () async {
+                                          final ok = await showDialog<bool>(
+                                            context: context,
+                                            builder: (ctx) => AlertDialog(
+                                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                              title: const Text('Valider versement caisse ?', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                              content: Text('Confirmez-vous que le livreur $name a remis la somme de ${balances.codToRemitToAgency.toStringAsFixed(2)} MAD à l\'agence ?\n\nCette action débloquera +${balances.pendingCommission.toStringAsFixed(2)} MAD sur son solde retirable.'),
+                                              actions: [
+                                                TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Annuler')),
+                                                ElevatedButton(
+                                                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF10B981)),
+                                                  onPressed: () => Navigator.of(ctx).pop(true),
+                                                  child: const Text('Confirmer Réception', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                                                ),
+                                              ],
+                                            ),
+                                          );
+                                          if (ok == true) {
+                                            await CaisseRemittanceHelper.validateDriverRemittance(
+                                              supabase: supabase,
+                                              driverId: dId,
+                                              orders: driverOrders,
+                                            );
+                                            if (context.mounted) {
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                SnackBar(
+                                                  content: Text('✅ Caisse de ${balances.codToRemitToAgency.toStringAsFixed(2)} MAD validée pour $name ! Commission débloquée.'),
+                                                  backgroundColor: const Color(0xFF10B981),
+                                                ),
+                                              );
+                                            }
+                                          }
+                                        },
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
                     );
                   },
                 );
@@ -1914,7 +2223,7 @@ Widget _buildOrderCard(BuildContext context, Map<String, dynamic> order, Color d
                         try {
                           await supabase.from('orders').update({
                             'status': 'in_transit',
-                            'delivery_address': address.toString().replaceAll('[ETAT: ACCEPTE_ATTENTE_AGENCE]', '') + ' [COLIS_REMIS_PAR_ADMIN]',
+                            'delivery_address': '${address.toString().replaceAll('[ETAT: ACCEPTE_ATTENTE_AGENCE]', '')} [COLIS_REMIS_PAR_ADMIN]',
                           }).eq('id', orderId);
 
                           if (context.mounted) {
@@ -1937,6 +2246,96 @@ Widget _buildOrderCard(BuildContext context, Map<String, dynamic> order, Color d
                   ),
                 ],
               ),
+            ),
+          ],
+
+          // CAISSE ENCAISSEMENT ADMIN ACTION (COD REMITTANCE VALIDATION)
+          if (status == 'delivered') ...[
+            const SizedBox(height: 8),
+            Builder(
+              builder: (context) {
+                final isRemitted = CaisseRemittanceHelper.isRemitted(order);
+                return Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: isRemitted ? const Color(0xFFDCFCE7) : const Color(0xFFFFFBEB),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: isRemitted ? const Color(0xFF86EFAC) : const Color(0xFFFDE68A)),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            isRemitted ? Icons.check_circle_rounded : Icons.pending_actions_rounded,
+                            size: 15,
+                            color: isRemitted ? const Color(0xFF16A34A) : const Color(0xFFD97706),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            isRemitted
+                                ? 'Caisse agence reçue & validée'
+                                : 'Caisse en attente ($amount MAD à encaisser)',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: isRemitted ? const Color(0xFF166534) : const Color(0xFFB45309),
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (!isRemitted && order['assigned_driver_id'] != null)
+                        InkWell(
+                          onTap: () async {
+                            final ok = await showDialog<bool>(
+                              context: context,
+                              builder: (ctx) => AlertDialog(
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                title: const Text('Valider encaissement caisse ?', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                content: Text('Confirmez-vous que le livreur vous a remis la somme de $amount MAD pour ce colis ?\n\nCette action débloquera automatiquement sa commission.'),
+                                actions: [
+                                  TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Annuler')),
+                                  ElevatedButton(
+                                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF10B981)),
+                                    onPressed: () => Navigator.of(ctx).pop(true),
+                                    child: const Text('Confirmer la Réception', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                                  ),
+                                ],
+                              ),
+                            );
+                            if (ok == true) {
+                              await CaisseRemittanceHelper.validateDriverRemittance(
+                                supabase: supabase,
+                                driverId: order['assigned_driver_id'],
+                                orders: [order],
+                              );
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('✅ Caisse validée ! Commission du livreur débloquée.'),
+                                    backgroundColor: Color(0xFF10B981),
+                                  ),
+                                );
+                              }
+                            }
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF10B981),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: const Text(
+                              'Valider Caisse',
+                              style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                );
+              },
             ),
           ],
 
