@@ -4,6 +4,7 @@ import 'screens/admin_dashboard_screen.dart';
 import 'screens/driver_home_screen.dart';
 import 'screens/login_screen.dart';
 import 'theme/ameex_theme.dart';
+import 'widgets/ameex_ui.dart';
 
 // Top-level Supabase client
 final supabase = Supabase.instance.client;
@@ -62,12 +63,7 @@ class AuthGate extends StatelessWidget {
               .maybeSingle(),
           builder: (context, profileSnapshot) {
             if (profileSnapshot.connectionState == ConnectionState.waiting) {
-              return const Scaffold(
-                backgroundColor: Color(0xFF0A192F),
-                body: Center(
-                  child: CircularProgressIndicator(color: Colors.white),
-                ),
-              );
+              return const AmeexSplash();
             }
 
             final data = profileSnapshot.data;

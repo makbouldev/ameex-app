@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../theme/ameex_theme.dart';
 import '../widgets/driver_avatar.dart';
 import '../widgets/ameex_animations.dart';
+import '../widgets/ameex_ui.dart';
 import '../widgets/parcel_scanner_dialog.dart';
 import 'add_order_screen.dart';
 import 'add_driver_screen.dart';
@@ -59,16 +60,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         ],
       ),
       bottomNavigationBar: Container(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           color: Colors.white,
-          border: Border(top: BorderSide(color: const Color(0xFFE2E8F0), width: 0.8)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 10,
-              offset: const Offset(0, -2),
-            ),
-          ],
+          border: Border(top: BorderSide(color: AmeexColors.divider, width: 1)),
         ),
         child: BottomNavigationBar(
           currentIndex: _selectedNavIndex,
@@ -76,28 +70,34 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           type: BottomNavigationBarType.fixed,
           backgroundColor: Colors.white,
           selectedItemColor: primaryBlue,
-          unselectedItemColor: const Color(0xFF94A3B8),
-          selectedLabelStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
-          unselectedLabelStyle: TextStyle(fontSize: 11),
+          unselectedItemColor: AmeexColors.textFaint,
+          selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 11.5),
+          unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 11.5),
+          elevation: 0,
           items: const [
             BottomNavigationBarItem(
-              icon: Icon(Icons.home_filled),
+              icon: Padding(padding: EdgeInsets.only(bottom: 2), child: Icon(Icons.dashboard_outlined, size: 22)),
+              activeIcon: Padding(padding: EdgeInsets.only(bottom: 2), child: Icon(Icons.dashboard_rounded, size: 22)),
               label: 'Accueil',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.assignment_outlined),
+              icon: Padding(padding: EdgeInsets.only(bottom: 2), child: Icon(Icons.inventory_2_outlined, size: 22)),
+              activeIcon: Padding(padding: EdgeInsets.only(bottom: 2), child: Icon(Icons.inventory_2_rounded, size: 22)),
               label: 'Commandes',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.map_outlined),
-              label: 'Suivi Direct',
+              icon: Padding(padding: EdgeInsets.only(bottom: 2), child: Icon(Icons.map_outlined, size: 22)),
+              activeIcon: Padding(padding: EdgeInsets.only(bottom: 2), child: Icon(Icons.map_rounded, size: 22)),
+              label: 'Suivi',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.notifications_outlined),
+              icon: Padding(padding: EdgeInsets.only(bottom: 2), child: Icon(Icons.notifications_none_rounded, size: 22)),
+              activeIcon: Padding(padding: EdgeInsets.only(bottom: 2), child: Icon(Icons.notifications_rounded, size: 22)),
               label: 'Alertes',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.person_outline),
+              icon: Padding(padding: EdgeInsets.only(bottom: 2), child: Icon(Icons.person_outline_rounded, size: 22)),
+              activeIcon: Padding(padding: EdgeInsets.only(bottom: 2), child: Icon(Icons.person_rounded, size: 22)),
               label: 'Profil',
             ),
           ],
@@ -133,17 +133,27 @@ class _AdminDashboardHomeTabState extends State<AdminDashboardHomeTab> {
     const primaryBlue = AmeexColors.primaryBlue;
 
     return Scaffold(
-      backgroundColor: AmeexColors.surfaceGray,
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(60),
-        child: AppBar(
-          backgroundColor: primaryBlue,
-          elevation: 0,
-          centerTitle: true,
-          title: const AmeexLogo(isWhite: true, height: 30),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.logout, color: Colors.white70, size: 22),
+      backgroundColor: AmeexColors.background,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        centerTitle: false,
+        titleSpacing: 20,
+        toolbarHeight: 60,
+        title: const AmeexLogo(height: 24),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.notifications_none_rounded,
+                color: AmeexColors.textDark, size: 22),
+            onPressed: () {},
+          ),
+          Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: IconButton(
+              icon: const Icon(Icons.logout_rounded,
+                  color: AmeexColors.textMuted, size: 20),
               tooltip: 'Déconnexion',
               onPressed: () async {
                 await supabase.auth.signOut();
@@ -152,13 +162,16 @@ class _AdminDashboardHomeTabState extends State<AdminDashboardHomeTab> {
                 }
               },
             ),
-          ],
-        ),
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: AmeexColors.darkNavy,
-        icon: const Icon(Icons.add_rounded, color: Colors.white, size: 22),
-        label: Text('Nouvelle Commande', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.white)),
+        backgroundColor: AmeexColors.primaryBlue,
+        elevation: 2,
+        highlightElevation: 4,
+        icon: const Icon(Icons.add_rounded, color: Colors.white, size: 20),
+        label: const Text('Nouvelle commande',
+            style: TextStyle(fontWeight: FontWeight.w600, color: Colors.white, fontSize: 14)),
         onPressed: () {
           Navigator.of(context).push(
             AmeexPageRoute(page: const AddOrderScreen()),
@@ -172,7 +185,7 @@ class _AdminDashboardHomeTabState extends State<AdminDashboardHomeTab> {
             .order('created_at', ascending: false),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator(color: AmeexColors.primaryBlue));
+            return const Center(child: AmeexLoading());
           }
 
           final orders = snapshot.data ?? [];
@@ -193,159 +206,178 @@ class _AdminDashboardHomeTabState extends State<AdminDashboardHomeTab> {
             return name.contains(query) || tracking.contains(query) || city.contains(query);
           }).toList();
 
+          // Revenue calculations
+                      final totalRevenue = orders.fold<num>(0, (sum, o) {
+                        if (o['status'] == 'delivered') {
+                          return sum + ((o['amount'] as num?) ?? 0);
+                        }
+                        return sum;
+                      });
+                      final activeToday = orders.where((o) =>
+                        o['status'] == 'in_transit' || o['status'] == 'accepted' || o['status'] == 'pending'
+                      ).length;
+
           return CustomScrollView(
+            physics: const BouncingScrollPhysics(),
             slivers: [
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(18, 16, 18, 10),
+                  padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Official Slogan Badge
-                      const AmeexSloganBadge(),
-                      const SizedBox(height: 10),
-
-                      // Header
+                      // Greeting
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Dashboard Admin',
-                                style: TextStyle(
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.w800,
-                                  color: AmeexColors.textDark,
-                                  letterSpacing: -0.5,
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                'Vue globale & Statuts en direct',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: AmeexColors.textMuted,
-                                ),
-                              ),
-                            ],
-                          ),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: AmeexColors.lightBlue,
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: const Color(0xFFBFDBFE)),
+                            width: 6, height: 6,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFF10B981),
+                              shape: BoxShape.circle,
                             ),
-                            child: Row(
-                              children: [
-                                const Icon(Icons.today, size: 14, color: AmeexColors.primaryBlue),
-                                const SizedBox(width: 6),
-                                Text(
-                                  'Aujourd\'hui',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
-                                    color: AmeexColors.primaryBlue,
-                                  ),
-                                ),
-                              ],
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'En ligne · ${_todayLabel()}',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AmeexColors.textMuted,
+                              fontWeight: FontWeight.w500,
+                              letterSpacing: 0.1,
                             ),
                           ),
                         ],
                       ),
-
-                      const SizedBox(height: 18),
-
-                      // 4 Top Statistic Cards (Ameex Brand Palette)
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildStatCard(
-                              title: 'Total Commandes',
-                              value: totalCount.toString(),
-                              bgColor: AmeexColors.primaryBlue,
-                              textColor: Colors.white,
-                              labelColor: Colors.white70,
-                            ),
-                          ),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: _buildStatCard(
-                              title: 'En Transit',
-                              value: inTransitCount.toString(),
-                              bgColor: AmeexColors.lightBlue,
-                              textColor: AmeexColors.primaryBlue,
-                              labelColor: AmeexColors.primaryBlue.withValues(alpha: 0.8),
-                            ),
-                          ),
-                        ],
+                      const SizedBox(height: 10),
+                      const Text(
+                        'Tableau de bord',
+                        style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -0.9,
+                          color: AmeexColors.textDark,
+                          height: 1.1,
+                        ),
                       ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '$activeToday livraisons actives · $totalCount au total',
+                        style: const TextStyle(
+                          fontSize: 13.5,
+                          color: AmeexColors.textMuted,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+
+                      const SizedBox(height: 22),
+
+                      // SIGNATURE HERO CARD — dark gradient, premium feel
+                      _buildHeroCard(
+                        revenue: totalRevenue.toDouble(),
+                        total: totalCount,
+                        inTransit: inTransitCount,
+                        delivered: deliveredCount,
+                      ),
+
                       const SizedBox(height: 14),
+
+                      // Secondary stat tiles — refined
                       Row(
                         children: [
                           Expanded(
-                            child: _buildStatCard(
-                              title: 'Livré',
-                              value: deliveredCount.toString(),
-                              bgColor: const Color(0xFF10B981),
-                              textColor: Colors.white,
-                              labelColor: Colors.white.withValues(alpha: 0.9),
+                            child: _buildCleanStat(
+                              icon: Icons.local_shipping_outlined,
+                              label: 'En transit',
+                              value: inTransitCount.toString(),
+                              accent: AmeexColors.primaryBlue,
                             ),
                           ),
-                          const SizedBox(width: 14),
+                          const SizedBox(width: 12),
                           Expanded(
-                            child: _buildStatCard(
-                              title: 'En Attente',
+                            child: _buildCleanStat(
+                              icon: Icons.check_circle_outline_rounded,
+                              label: 'Livré',
+                              value: deliveredCount.toString(),
+                              accent: const Color(0xFF10B981),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _buildCleanStat(
+                              icon: Icons.schedule_rounded,
+                              label: 'En attente',
                               value: pendingCount.toString(),
-                              bgColor: const Color(0xFFFB923C),
-                              textColor: Colors.white,
-                              labelColor: Colors.white.withValues(alpha: 0.9),
+                              accent: const Color(0xFFF59E0B),
                             ),
                           ),
                         ],
                       ),
 
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 24),
 
                       // SECTION: EQUIPE DES LIVREURS AMEEX (DATA LIVREURS EN DIRECT)
                       _buildDriversSection(context, primaryBlue, orders),
 
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 28),
 
-                      // Section Title
-                      const Text(
-                        'Commandes Récentes',
-                        style: TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF0F172A),
-                        ),
+                      // Section header
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Commandes récentes',
+                            style: TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: -0.2,
+                              color: AmeexColors.textDark,
+                            ),
+                          ),
+                          Text(
+                            '${filteredOrders.length}',
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                              color: AmeexColors.textFaint,
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 12),
 
-                      // Search bar
+                      // Clean search bar — filled gray, no border
                       Container(
-                        height: 44,
+                        height: 48,
                         decoration: BoxDecoration(
-                          color: const Color(0xFFF8FAFC),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                          color: AmeexColors.surfaceAlt,
+                          borderRadius: BorderRadius.circular(14),
                         ),
                         child: TextField(
                           controller: _searchController,
                           onChanged: (val) => setState(() => _searchQuery = val),
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: AmeexColors.textDark,
+                          ),
                           decoration: const InputDecoration(
-                            hintText: 'Rechercher par client, tracking ou ville...',
-                            hintStyle: TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
-                            prefixIcon: Icon(Icons.search, color: Color(0xFF94A3B8), size: 20),
+                            hintText: 'Rechercher client, tracking, ville…',
+                            hintStyle: TextStyle(
+                              color: AmeexColors.textFaint,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            prefixIcon: Icon(Icons.search_rounded,
+                                color: AmeexColors.textMuted, size: 20),
                             border: InputBorder.none,
-                            contentPadding: EdgeInsets.symmetric(vertical: 10),
+                            enabledBorder: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                            contentPadding:
+                                EdgeInsets.symmetric(vertical: 14),
                           ),
                         ),
                       ),
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 16),
                     ],
                   ),
                 ),
@@ -385,37 +417,316 @@ class _AdminDashboardHomeTabState extends State<AdminDashboardHomeTab> {
     );
   }
 
-  Widget _buildStatCard({
-    required String title,
+  String _todayLabel() {
+    const months = [
+      'janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin',
+      'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.',
+    ];
+    final now = DateTime.now();
+    return '${now.day} ${months[now.month - 1]}';
+  }
+
+  Widget _buildCleanStat({
+    required IconData icon,
+    required String label,
     required String value,
-    required Color bgColor,
-    required Color textColor,
-    required Color labelColor,
+    required Color accent,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: bgColor.withValues(alpha: 0.2),
-            blurRadius: 8,
-            offset: const Offset(0, 3),
-          ),
-        ],
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: AmeexDesign.shadowCard,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: labelColor),
-          ),
-          const SizedBox(height: 8),
+          Icon(icon, color: accent, size: 18),
+          const SizedBox(height: 12),
           Text(
             value,
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: textColor),
+            style: const TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.7,
+              color: AmeexColors.textDark,
+              height: 1.0,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: AmeexColors.textMuted,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeroCard({
+    required double revenue,
+    required int total,
+    required int inTransit,
+    required int delivered,
+  }) {
+    final rate = total == 0 ? 0 : ((delivered / total) * 100).round();
+    return Container(
+      decoration: BoxDecoration(
+        gradient: AmeexDesign.heroGradient,
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: AmeexDesign.shadowHero,
+      ),
+      child: Stack(
+        children: [
+          // Decorative concentric circles (subtle)
+          Positioned(
+            top: -40,
+            right: -30,
+            child: _heroGlow(160, Colors.white.withValues(alpha: 0.06)),
+          ),
+          Positioned(
+            bottom: -50,
+            right: 40,
+            child: _heroGlow(120, Colors.white.withValues(alpha: 0.04)),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Top row — label + live indicator
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'REVENUS ENCAISSÉS',
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.6,
+                        color: Colors.white.withValues(alpha: 0.6),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 6, height: 6,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFF34D399),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'LIVE',
+                            style: TextStyle(
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 1.2,
+                              color: Colors.white.withValues(alpha: 0.95),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 12),
+
+                // Hero number
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      _formatMoney(revenue),
+                      style: const TextStyle(
+                        fontSize: 36,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -1.5,
+                        color: Colors.white,
+                        height: 1.0,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 5),
+                      child: Text(
+                        'MAD',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white.withValues(alpha: 0.55),
+                          letterSpacing: 0.3,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Icon(Icons.trending_up_rounded,
+                        size: 14, color: const Color(0xFF34D399).withValues(alpha: 0.9)),
+                    const SizedBox(width: 4),
+                    Text(
+                      '$rate% taux de livraison',
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.white.withValues(alpha: 0.7),
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 18),
+
+                // Divider
+                Container(
+                  height: 1,
+                  color: Colors.white.withValues(alpha: 0.10),
+                ),
+
+                const SizedBox(height: 14),
+
+                // Inline sub-metrics
+                Row(
+                  children: [
+                    Expanded(
+                      child: _heroMetric(
+                        label: 'Total',
+                        value: total.toString(),
+                      ),
+                    ),
+                    Container(
+                      width: 1, height: 28,
+                      color: Colors.white.withValues(alpha: 0.10),
+                    ),
+                    Expanded(
+                      child: _heroMetric(
+                        label: 'En transit',
+                        value: inTransit.toString(),
+                      ),
+                    ),
+                    Container(
+                      width: 1, height: 28,
+                      color: Colors.white.withValues(alpha: 0.10),
+                    ),
+                    Expanded(
+                      child: _heroMetric(
+                        label: 'Livré',
+                        value: delivered.toString(),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _heroGlow(double size, Color color) => IgnorePointer(
+        child: Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: RadialGradient(
+              colors: [color, color.withValues(alpha: 0)],
+            ),
+          ),
+        ),
+      );
+
+  Widget _heroMetric({required String label, required String value}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.4,
+            color: Colors.white,
+            height: 1.1,
+          ),
+        ),
+        const SizedBox(height: 3),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w500,
+            color: Colors.white.withValues(alpha: 0.6),
+            letterSpacing: 0.2,
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _formatMoney(double value) {
+    final s = value.toStringAsFixed(0);
+    final buf = StringBuffer();
+    for (int i = 0; i < s.length; i++) {
+      if (i > 0 && (s.length - i) % 3 == 0) buf.write(' ');
+      buf.write(s[i]);
+    }
+    return buf.toString();
+  }
+
+  Widget _driverMetric({
+    required IconData icon,
+    required String value,
+    required String label,
+    Color accent = AmeexColors.primaryBlue,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: AmeexColors.surfaceAlt,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 14, color: accent),
+          const SizedBox(width: 6),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.2,
+              color: AmeexColors.textDark,
+            ),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+              color: AmeexColors.textMuted,
+            ),
           ),
         ],
       ),
@@ -583,56 +894,47 @@ class _AdminDashboardHomeTabState extends State<AdminDashboardHomeTab> {
               children: [
                 Row(
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: AmeexColors.lightBlue,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Icon(Icons.two_wheeler_rounded, color: AmeexColors.primaryBlue, size: 18),
-                    ),
-                    const SizedBox(width: 8),
                     const Text(
-                      'Équipe des Livreurs',
+                      'Équipe de livreurs',
                       style: TextStyle(
                         fontSize: 17,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF0F172A),
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -0.2,
+                        color: AmeexColors.textDark,
                       ),
                     ),
                     const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFEFF5FF),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: const Color(0xFFBFDBFE)),
-                      ),
-                      child: Text(
-                        '${drivers.length} livreur(s)',
-                        style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: AmeexColors.primaryBlue,
-                        ),
+                    Text(
+                      '${drivers.length}',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: AmeexColors.textFaint,
                       ),
                     ),
                   ],
                 ),
-                TextButton.icon(
-                  icon: const Icon(Icons.person_add_rounded, size: 16),
-                  label: const Text('Ajouter', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                TextButton(
                   style: TextButton.styleFrom(
                     foregroundColor: AmeexColors.primaryBlue,
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    backgroundColor: const Color(0xFFEFF5FF),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
                   onPressed: () {
                     Navigator.of(context).push(
                       AmeexPageRoute(page: const AddDriverScreen()),
                     );
                   },
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.add_rounded, size: 16),
+                      SizedBox(width: 4),
+                      Text('Ajouter',
+                          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -641,23 +943,29 @@ class _AdminDashboardHomeTabState extends State<AdminDashboardHomeTab> {
             if (drivers.isEmpty)
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF0E1116).withValues(alpha: 0.04),
+                      blurRadius: 14,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
                 child: const Center(
                   child: Text(
-                    'Aucun livreur enregistré pour le moment.\nCliquez sur "+ Ajouter" pour créer un profil livreur.',
+                    'Aucun livreur enregistré pour le moment.',
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: Color(0xFF64748B), fontSize: 13),
+                    style: TextStyle(color: AmeexColors.textMuted, fontSize: 13.5, fontWeight: FontWeight.w500),
                   ),
                 ),
               )
             else
               SizedBox(
-                height: 175,
+                height: 168,
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
                   itemCount: drivers.length,
@@ -670,7 +978,6 @@ class _AdminDashboardHomeTabState extends State<AdminDashboardHomeTab> {
                     final zone = DriverAvatarHelper.cleanZone(d['zone']);
                     final dId = d['id'];
 
-                    // Calculate active orders for this driver
                     final activeMissions = orders.where((o) =>
                         o['assigned_driver_id'] == dId &&
                         o['status'] != 'delivered' &&
@@ -678,38 +985,45 @@ class _AdminDashboardHomeTabState extends State<AdminDashboardHomeTab> {
 
                     final driverOrders = orders.where((o) => o['assigned_driver_id'] == dId).toList();
                     final balances = CaisseRemittanceHelper.calculateBalances(driverOrders);
+                    final needsRemittance = balances.codToRemitToAgency > 0;
 
                     return Container(
-                      width: 275,
-                      padding: const EdgeInsets.all(12),
+                      width: 260,
+                      padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                          color: balances.codToRemitToAgency > 0 ? const Color(0xFFFDE68A) : const Color(0xFFE2E8F0),
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.03),
-                            blurRadius: 6,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: AmeexDesign.shadowCard,
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Row(
                             children: [
-                              DriverAvatar(
-                                driverData: d,
-                                radius: 20,
-                                borderColor: AmeexColors.primaryBlue,
-                                borderWidth: 1.5,
-                                showBadge: true,
-                                badgeColor: const Color(0xFF10B981),
+                              // Avatar with soft brand ring
+                              Container(
+                                padding: const EdgeInsets.all(2),
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  gradient: LinearGradient(
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                    colors: [
+                                      AmeexColors.primaryBlue.withValues(alpha: 0.35),
+                                      AmeexColors.primaryBlue.withValues(alpha: 0.08),
+                                    ],
+                                  ),
+                                ),
+                                child: DriverAvatar(
+                                  driverData: d,
+                                  radius: 19,
+                                  borderColor: Colors.white,
+                                  borderWidth: 1.5,
+                                  showBadge: true,
+                                  badgeColor: const Color(0xFF10B981),
+                                ),
                               ),
-                              const SizedBox(width: 10),
+                              const SizedBox(width: 12),
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -718,109 +1032,96 @@ class _AdminDashboardHomeTabState extends State<AdminDashboardHomeTab> {
                                       name,
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF0F172A)),
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 14.5,
+                                        letterSpacing: -0.2,
+                                        color: AmeexColors.textDark,
+                                      ),
                                     ),
-                                    const SizedBox(height: 1),
+                                    const SizedBox(height: 2),
                                     Text(
                                       phone,
-                                      style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: AmeexColors.textMuted,
+                                        fontWeight: FontWeight.w500,
+                                      ),
                                     ),
                                   ],
-                                ),
-                              ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: activeMissions > 0 ? const Color(0xFFEFF5FF) : const Color(0xFFF1F5F9),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(
-                                  '$activeMissions mission(s)',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                    color: activeMissions > 0 ? AmeexColors.primaryBlue : const Color(0xFF64748B),
-                                  ),
                                 ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 8),
 
-                          // CAISSE REMITTANCE STATUS & ACTION
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-                            decoration: BoxDecoration(
-                              color: balances.codToRemitToAgency > 0 ? const Color(0xFFFFFBEB) : const Color(0xFFF0FDF4),
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(
-                                color: balances.codToRemitToAgency > 0 ? const Color(0xFFFDE68A) : const Color(0xFFBBF7D0),
+                          const SizedBox(height: 14),
+
+                          // Inline metrics row
+                          Row(
+                            children: [
+                              _driverMetric(
+                                icon: Icons.local_shipping_outlined,
+                                value: '$activeMissions',
+                                label: 'En cours',
                               ),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Row(
+                              const SizedBox(width: 12),
+                              _driverMetric(
+                                icon: Icons.account_balance_wallet_outlined,
+                                value: needsRemittance
+                                    ? '${balances.codToRemitToAgency.toStringAsFixed(0)}'
+                                    : '0',
+                                label: needsRemittance ? 'Caisse MAD' : 'À jour',
+                                accent: needsRemittance
+                                    ? const Color(0xFFD97706)
+                                    : const Color(0xFF10B981),
+                              ),
+                            ],
+                          ),
+
+                          const Spacer(),
+
+                          // Footer — vehicle/zone + action
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Row(
                                   children: [
-                                    Icon(
-                                      balances.codToRemitToAgency > 0 ? Icons.monetization_on_rounded : Icons.check_circle_rounded,
-                                      size: 14,
-                                      color: balances.codToRemitToAgency > 0 ? const Color(0xFFD97706) : const Color(0xFF16A34A),
-                                    ),
+                                    const Icon(Icons.place_outlined, size: 13, color: AmeexColors.textFaint),
                                     const SizedBox(width: 4),
-                                    Text(
-                                      balances.codToRemitToAgency > 0
-                                          ? 'Caisse: ${balances.codToRemitToAgency.toStringAsFixed(0)} MAD'
-                                          : 'Caisse à jour',
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold,
-                                        color: balances.codToRemitToAgency > 0 ? const Color(0xFFB45309) : const Color(0xFF16A34A),
+                                    Expanded(
+                                      child: Text(
+                                        '$vehicle · $zone',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          fontSize: 11.5,
+                                          color: AmeexColors.textMuted,
+                                          fontWeight: FontWeight.w500,
+                                        ),
                                       ),
                                     ),
                                   ],
                                 ),
-                                if (balances.codToRemitToAgency > 0)
-                                  InkWell(
-                                    onTap: () => _showValidateRemittanceDialog(context, d, balances, driverOrders),
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFF10B981),
-                                        borderRadius: BorderRadius.circular(6),
-                                      ),
-                                      child: const Text(
-                                        'Valider',
-                                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
-                                      ),
+                              ),
+                              if (needsRemittance)
+                                InkWell(
+                                  borderRadius: BorderRadius.circular(999),
+                                  onTap: () => _showValidateRemittanceDialog(context, d, balances, driverOrders),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                    decoration: BoxDecoration(
+                                      color: AmeexColors.primaryBlue,
+                                      borderRadius: BorderRadius.circular(999),
+                                    ),
+                                    child: const Text(
+                                      'Valider',
+                                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white),
                                     ),
                                   ),
-                              ],
-                            ),
-                          ),
-
-                          const Spacer(),
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF8FAFC),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(Icons.two_wheeler_rounded, size: 13, color: Color(0xFF475569)),
-                                const SizedBox(width: 4),
-                                Expanded(
-                                  child: Text(
-                                    '$vehicle • $zone',
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(fontSize: 10, color: Color(0xFF475569), fontWeight: FontWeight.w500),
-                                  ),
                                 ),
-                              ],
-                            ),
+                            ],
                           ),
                         ],
                       ),
@@ -854,90 +1155,154 @@ class _AdminOrdersTabState extends State<AdminOrdersTab> {
     const deepNavy = AmeexColors.primaryBlue;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: AmeexColors.background,
       appBar: AppBar(
-        backgroundColor: deepNavy,
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
         elevation: 0,
-        title: const Text('Gestion des Commandes', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        centerTitle: true,
+        scrolledUnderElevation: 0,
+        centerTitle: false,
+        titleSpacing: 20,
+        toolbarHeight: 60,
+        title: const Text(
+          'Commandes',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.4,
+            color: AmeexColors.textDark,
+          ),
+        ),
       ),
-      body: Column(
-        children: [
-          // Filter Chips
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Row(
-              children: [
-                _buildFilterChip('Toutes', 'all'),
-                _buildFilterChip('En Attente', 'pending'),
-                _buildFilterChip('En Transit', 'in_transit'),
-                _buildFilterChip('Livrées', 'delivered'),
-                _buildFilterChip('Annulées', 'cancelled'),
-              ],
-            ),
-          ),
+      body: StreamBuilder<List<Map<String, dynamic>>>(
+        stream: supabase
+            .from('orders')
+            .stream(primaryKey: ['id'])
+            .order('created_at', ascending: false),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: AmeexLoading());
+          }
 
-          // Orders Stream
-          Expanded(
-            child: StreamBuilder<List<Map<String, dynamic>>>(
-              stream: supabase
-                  .from('orders')
-                  .stream(primaryKey: ['id'])
-                  .order('created_at', ascending: false),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator(color: AmeexColors.primaryBlue));
-                }
+          final orders = snapshot.data ?? [];
+          final counts = <String, int>{
+            'all': orders.length,
+            'pending': orders.where((o) => o['status'] == 'pending').length,
+            'in_transit': orders.where((o) => o['status'] == 'in_transit').length,
+            'delivered': orders.where((o) => o['status'] == 'delivered').length,
+            'cancelled': orders.where((o) => o['status'] == 'cancelled').length,
+          };
+          final filtered = orders.where((o) {
+            if (_selectedStatusFilter == 'all') return true;
+            return o['status'] == _selectedStatusFilter;
+          }).toList();
 
-                final orders = snapshot.data ?? [];
-                final filtered = orders.where((o) {
-                  if (_selectedStatusFilter == 'all') return true;
-                  return o['status'] == _selectedStatusFilter;
-                }).toList();
+          return Column(
+            children: [
+              // Clean filter pills
+              Container(
+                height: 54,
+                color: Colors.white,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.fromLTRB(20, 10, 20, 10),
+                  children: [
+                    _buildFilterChip('Toutes',    'all',        counts['all']!),
+                    _buildFilterChip('En attente','pending',    counts['pending']!),
+                    _buildFilterChip('En transit','in_transit', counts['in_transit']!),
+                    _buildFilterChip('Livrées',   'delivered',  counts['delivered']!),
+                    _buildFilterChip('Annulées',  'cancelled',  counts['cancelled']!),
+                  ],
+                ),
+              ),
+              const Divider(height: 1, color: AmeexColors.divider),
 
-                if (filtered.isEmpty) {
-                  return const Center(
-                    child: Text('Aucune commande dans cette catégorie', style: TextStyle(color: Color(0xFF94A3B8))),
-                  );
-                }
-
-                return ListView.separated(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: filtered.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 10),
-                  itemBuilder: (context, index) {
-                    final order = filtered[index];
-                    return _buildOrderCard(context, order, deepNavy);
-                  },
-                );
-              },
-            ),
-          ),
-        ],
+              Expanded(
+                child: filtered.isEmpty
+                    ? const Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.inbox_outlined,
+                                size: 42, color: AmeexColors.textFaint),
+                            SizedBox(height: 12),
+                            Text(
+                              'Aucune commande',
+                              style: TextStyle(
+                                color: AmeexColors.textMuted,
+                                fontSize: 14.5,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    : ListView.builder(
+                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+                        itemCount: filtered.length,
+                        itemBuilder: (context, index) {
+                          final order = filtered[index];
+                          return _buildOrderCard(context, order, deepNavy);
+                        },
+                      ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
 
-  Widget _buildFilterChip(String label, String value) {
-    const deepNavy = Color(0xFF0A192F);
+  Widget _buildFilterChip(String label, String value, int count) {
     final isSelected = _selectedStatusFilter == value;
 
     return Padding(
       padding: const EdgeInsets.only(right: 8),
-      child: ChoiceChip(
-        label: Text(label),
-        selected: isSelected,
-        selectedColor: deepNavy,
-        backgroundColor: Colors.white,
-        labelStyle: TextStyle(
-          color: isSelected ? Colors.white : const Color(0xFF475569),
-          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-          fontSize: 12,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(999),
+          onTap: () => setState(() => _selectedStatusFilter = value),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOut,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              color: isSelected ? AmeexColors.primaryBlue : AmeexColors.surfaceAlt,
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Row(
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: isSelected ? Colors.white : AmeexColors.textDark,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? Colors.white.withValues(alpha: 0.22)
+                        : Colors.white,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    '$count',
+                    style: TextStyle(
+                      color: isSelected ? Colors.white : AmeexColors.textMuted,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 11,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
-        onSelected: (selected) {
-          if (selected) setState(() => _selectedStatusFilter = value);
-        },
       ),
     );
   }
@@ -1046,11 +1411,24 @@ class _AdminLiveTrackingTabState extends State<AdminLiveTrackingTab> {
         o['dest_latitude'] != null && o['dest_longitude'] != null).toList();
 
     return Scaffold(
+      backgroundColor: AmeexColors.background,
       appBar: AppBar(
-        backgroundColor: deepNavy,
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
         elevation: 0,
-        title: const Text('Suivi en direct & Carte Client', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        centerTitle: true,
+        scrolledUnderElevation: 0,
+        centerTitle: false,
+        titleSpacing: 20,
+        toolbarHeight: 60,
+        title: const Text(
+          'Suivi en direct',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.4,
+            color: AmeexColors.textDark,
+          ),
+        ),
       ),
       body: Column(
         children: [
@@ -1622,12 +2000,24 @@ class AdminNotificationsTab extends StatelessWidget {
     final supabase = Supabase.instance.client;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: AmeexColors.background,
       appBar: AppBar(
-        backgroundColor: deepNavy,
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
         elevation: 0,
-        title: const Text('Fil d\'Activité & Alertes', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        centerTitle: true,
+        scrolledUnderElevation: 0,
+        centerTitle: false,
+        titleSpacing: 20,
+        toolbarHeight: 60,
+        title: const Text(
+          'Activité & alertes',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.4,
+            color: AmeexColors.textDark,
+          ),
+        ),
       ),
       body: StreamBuilder<List<Map<String, dynamic>>>(
         stream: supabase
@@ -1681,21 +2071,46 @@ class AdminNotificationsTab extends StatelessWidget {
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                  borderRadius: BorderRadius.circular(18),
+                  boxShadow: AmeexDesign.shadowCard,
                 ),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(icon, color: iconColor, size: 28),
+                    Container(
+                      width: 38, height: 38,
+                      decoration: BoxDecoration(
+                        color: iconColor.withValues(alpha: 0.10),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(icon, color: iconColor, size: 18),
+                    ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                          Text(
+                            title,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                              letterSpacing: -0.1,
+                              color: AmeexColors.textDark,
+                            ),
+                          ),
                           const SizedBox(height: 3),
-                          Text(subtitle, style: const TextStyle(fontSize: 12, color: Color(0xFF475569))),
+                          Text(
+                            subtitle,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 12.5,
+                              color: AmeexColors.textMuted,
+                              fontWeight: FontWeight.w500,
+                              height: 1.35,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -1723,56 +2138,128 @@ class AdminProfileTab extends StatelessWidget {
     final user = supabase.auth.currentUser;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: AmeexColors.background,
       appBar: AppBar(
-        backgroundColor: deepNavy,
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
         elevation: 0,
-        title: const Text('Administration & Équipe', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        centerTitle: true,
+        scrolledUnderElevation: 0,
+        centerTitle: false,
+        titleSpacing: 20,
+        toolbarHeight: 60,
+        title: const Text(
+          'Profil',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.4,
+            color: AmeexColors.textDark,
+          ),
+        ),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: IconButton(
+              icon: const Icon(Icons.logout_rounded,
+                  color: AmeexColors.textMuted, size: 20),
+              tooltip: 'Déconnexion',
+              onPressed: () async {
+                await supabase.auth.signOut();
+                if (context.mounted) {
+                  Navigator.of(context).pushReplacementNamed('/login');
+                }
+              },
+            ),
+          ),
+        ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(18),
+        padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Admin Profile Header
+            // Admin Profile Hero
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
+                gradient: AmeexDesign.heroGradient,
+                borderRadius: BorderRadius.circular(22),
+                boxShadow: AmeexDesign.shadowHero,
               ),
-              child: Row(
+              child: Stack(
                 children: [
-                  const CircleAvatar(
-                    radius: 28,
-                    backgroundColor: deepNavy,
-                    child: Icon(Icons.admin_panel_settings, size: 30, color: Colors.white),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Administrateur Ameex',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                  Positioned(
+                    top: -30, right: -20,
+                    child: Container(
+                      width: 120, height: 120,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: RadialGradient(
+                          colors: [
+                            Colors.white.withValues(alpha: 0.10),
+                            Colors.white.withValues(alpha: 0),
+                          ],
                         ),
-                        const SizedBox(height: 2),
-                        Text(user?.email ?? 'admin@ameex.ma', style: const TextStyle(color: Color(0xFF64748B), fontSize: 13)),
-                      ],
+                      ),
                     ),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.logout, color: Colors.redAccent),
-                    tooltip: 'Déconnexion',
-                    onPressed: () async {
-                      await supabase.auth.signOut();
-                      if (context.mounted) {
-                        Navigator.of(context).pushReplacementNamed('/login');
-                      }
-                    },
+                  Row(
+                    children: [
+                      Container(
+                        width: 58, height: 58,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.white.withValues(alpha: 0.14),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.22),
+                            width: 1.2,
+                          ),
+                        ),
+                        alignment: Alignment.center,
+                        child: const Icon(Icons.shield_outlined,
+                            size: 26, color: Colors.white),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'ADMINISTRATEUR',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 1.6,
+                                color: Colors.white.withValues(alpha: 0.65),
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              user?.email?.split('@').first ?? 'Admin',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 19,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: -0.3,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              user?.email ?? 'admin@ameex.ma',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.65),
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -1783,18 +2270,18 @@ class AdminProfileTab extends StatelessWidget {
             // BUTTON: AJOUTER UN LIVREUR
             SizedBox(
               width: double.infinity,
-              height: 50,
+              height: 52,
               child: ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF10B981),
+                  backgroundColor: AmeexColors.primaryBlue,
                   foregroundColor: Colors.white,
-                  elevation: 2,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                 ),
-                icon: const Icon(Icons.person_add_alt_1_rounded),
+                icon: const Icon(Icons.person_add_alt_1_rounded, size: 18),
                 label: const Text(
-                  '+ Ajouter un Nouveau Livreur',
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                  'Ajouter un nouveau livreur',
+                  style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600),
                 ),
                 onPressed: () {
                   Navigator.of(context).push(
@@ -1804,19 +2291,28 @@ class AdminProfileTab extends StatelessWidget {
               ),
             ),
 
-            const SizedBox(height: 24),
+            const SizedBox(height: 28),
 
             // Drivers List Header
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: const [
-                Text(
-                  'Équipe des Livreurs Enregistrés',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
-                ),
-              ],
+            const Text(
+              'Équipe de livreurs',
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.2,
+                color: AmeexColors.textDark,
+              ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 4),
+            const Text(
+              'Gérez votre équipe et les caisses en attente',
+              style: TextStyle(
+                fontSize: 13,
+                color: AmeexColors.textMuted,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 14),
 
             // Drivers List Stream
             StreamBuilder<List<Map<String, dynamic>>>(
@@ -1851,7 +2347,7 @@ class AdminProfileTab extends StatelessWidget {
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
                       itemCount: drivers.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: 10),
+                      separatorBuilder: (_, _) => const SizedBox(height: 12),
                       itemBuilder: (context, index) {
                         final d = drivers[index];
                         final name = d['full_name'] ?? 'Livreur';
@@ -1862,131 +2358,205 @@ class AdminProfileTab extends StatelessWidget {
 
                         final driverOrders = allOrders.where((o) => o['assigned_driver_id'] == dId).toList();
                         final balances = CaisseRemittanceHelper.calculateBalances(driverOrders);
+                        final needsRemittance = balances.codToRemitToAgency > 0;
+                        final activeOrders = driverOrders.where((o) =>
+                            o['status'] != 'delivered' && o['status'] != 'cancelled').length;
 
                         return Container(
-                          padding: const EdgeInsets.all(14),
+                          padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
                             color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: balances.codToRemitToAgency > 0 ? const Color(0xFFFDE68A) : const Color(0xFFE2E8F0),
-                            ),
+                            borderRadius: BorderRadius.circular(18),
+                            boxShadow: AmeexDesign.shadowCard,
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Row(
                                 children: [
-                                  DriverAvatar(
-                                    driverData: d,
-                                    radius: 22,
-                                    borderColor: deepNavy,
-                                    borderWidth: 2,
-                                    showBadge: true,
-                                    badgeColor: const Color(0xFF10B981),
+                                  Container(
+                                    padding: const EdgeInsets.all(2),
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      gradient: LinearGradient(
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                        colors: [
+                                          AmeexColors.primaryBlue.withValues(alpha: 0.35),
+                                          AmeexColors.primaryBlue.withValues(alpha: 0.08),
+                                        ],
+                                      ),
+                                    ),
+                                    child: DriverAvatar(
+                                      driverData: d,
+                                      radius: 20,
+                                      borderColor: Colors.white,
+                                      borderWidth: 1.5,
+                                      showBadge: true,
+                                      badgeColor: const Color(0xFF10B981),
+                                    ),
                                   ),
                                   const SizedBox(width: 12),
                                   Expanded(
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                                        const SizedBox(height: 2),
                                         Text(
-                                          '${DriverAvatarHelper.cleanVehicle(vehicle)} • ${DriverAvatarHelper.cleanZone(zone)}',
-                                          style: const TextStyle(color: Color(0xFF64748B), fontSize: 12),
+                                          name,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 15,
+                                            letterSpacing: -0.2,
+                                            color: AmeexColors.textDark,
+                                          ),
                                         ),
-                                        const SizedBox(height: 2),
-                                        Text('📞 $phone', style: const TextStyle(color: Color(0xFF10B981), fontSize: 12, fontWeight: FontWeight.w600)),
+                                        const SizedBox(height: 3),
+                                        Row(
+                                          children: [
+                                            const Icon(Icons.phone_outlined, size: 12, color: AmeexColors.textMuted),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              phone,
+                                              style: const TextStyle(
+                                                color: AmeexColors.textMuted,
+                                                fontSize: 12.5,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
                                       ],
+                                    ),
+                                  ),
+                                  // Direct delete button
+                                  Material(
+                                    color: Colors.transparent,
+                                    child: InkWell(
+                                      borderRadius: BorderRadius.circular(999),
+                                      onTap: () => _confirmDeleteDriver(
+                                        context: context,
+                                        driverId: dId,
+                                        driverName: name,
+                                        activeOrders: activeOrders,
+                                      ),
+                                      child: Container(
+                                        width: 36, height: 36,
+                                        decoration: BoxDecoration(
+                                          color: AmeexColors.dangerRed.withValues(alpha: 0.08),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(
+                                          Icons.delete_outline_rounded,
+                                          color: AmeexColors.dangerRed,
+                                          size: 18,
+                                        ),
+                                      ),
                                     ),
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 10),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                                decoration: BoxDecoration(
-                                  color: balances.codToRemitToAgency > 0 ? const Color(0xFFFFFBEB) : const Color(0xFFF0FDF4),
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(
-                                    color: balances.codToRemitToAgency > 0 ? const Color(0xFFFDE68A) : const Color(0xFFBBF7D0),
-                                  ),
-                                ),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          balances.codToRemitToAgency > 0
-                                              ? 'Caisse Espèces (COD) à encaisser :'
-                                              : 'Caisse Agence :',
-                                          style: TextStyle(
-                                            fontSize: 10,
-                                            color: balances.codToRemitToAgency > 0 ? const Color(0xFF92400E) : const Color(0xFF166534),
-                                          ),
-                                        ),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          balances.codToRemitToAgency > 0
-                                              ? '${balances.codToRemitToAgency.toStringAsFixed(2)} MAD'
-                                              : '✅ À jour (${balances.codRemittedToAgency.toStringAsFixed(0)} MAD)',
-                                          style: TextStyle(
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.bold,
-                                            color: balances.codToRemitToAgency > 0 ? const Color(0xFFB45309) : const Color(0xFF16A34A),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    if (balances.codToRemitToAgency > 0)
-                                      ElevatedButton.icon(
-                                        icon: const Icon(Icons.check_circle_rounded, size: 14),
-                                        label: const Text('Valider Caisse', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: const Color(0xFF10B981),
-                                          foregroundColor: Colors.white,
-                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                        ),
-                                        onPressed: () async {
-                                          final ok = await showDialog<bool>(
-                                            context: context,
-                                            builder: (ctx) => AlertDialog(
-                                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                                              title: const Text('Valider versement caisse ?', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                                              content: Text('Confirmez-vous que le livreur $name a remis la somme de ${balances.codToRemitToAgency.toStringAsFixed(2)} MAD à l\'agence ?\n\nCette action débloquera +${balances.pendingCommission.toStringAsFixed(2)} MAD sur son solde retirable.'),
-                                              actions: [
-                                                TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Annuler')),
-                                                ElevatedButton(
-                                                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF10B981)),
-                                                  onPressed: () => Navigator.of(ctx).pop(true),
-                                                  child: const Text('Confirmer Réception', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                                                ),
-                                              ],
-                                            ),
-                                          );
-                                          if (ok == true) {
-                                            await CaisseRemittanceHelper.validateDriverRemittance(
-                                              supabase: supabase,
-                                              driverId: dId,
-                                              orders: driverOrders,
-                                            );
-                                            if (context.mounted) {
-                                              ScaffoldMessenger.of(context).showSnackBar(
-                                                SnackBar(
-                                                  content: Text('✅ Caisse de ${balances.codToRemitToAgency.toStringAsFixed(2)} MAD validée pour $name ! Commission débloquée.'),
-                                                  backgroundColor: const Color(0xFF10B981),
-                                                ),
-                                              );
-                                            }
-                                          }
-                                        },
+
+                              const SizedBox(height: 12),
+
+                              // Meta row
+                              Row(
+                                children: [
+                                  const Icon(Icons.place_outlined, size: 13, color: AmeexColors.textFaint),
+                                  const SizedBox(width: 4),
+                                  Expanded(
+                                    child: Text(
+                                      '${DriverAvatarHelper.cleanVehicle(vehicle)} · ${DriverAvatarHelper.cleanZone(zone)}',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        color: AmeexColors.textMuted,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
                                       ),
-                                  ],
-                                ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+
+                              const SizedBox(height: 12),
+
+                              // Caisse row
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        needsRemittance
+                                            ? Icons.account_balance_wallet_outlined
+                                            : Icons.check_circle_outline_rounded,
+                                        size: 14,
+                                        color: needsRemittance
+                                            ? const Color(0xFFD97706)
+                                            : const Color(0xFF10B981),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        needsRemittance
+                                            ? 'Caisse · ${balances.codToRemitToAgency.toStringAsFixed(0)} MAD'
+                                            : 'Caisse à jour',
+                                        style: const TextStyle(
+                                          fontSize: 12.5,
+                                          fontWeight: FontWeight.w500,
+                                          color: AmeexColors.textMuted,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  if (needsRemittance)
+                                    InkWell(
+                                      borderRadius: BorderRadius.circular(999),
+                                      onTap: () async {
+                                        final ok = await showDialog<bool>(
+                                          context: context,
+                                          builder: (ctx) => AlertDialog(
+                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                            title: const Text('Valider versement caisse ?', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                            content: Text('Confirmez-vous que le livreur $name a remis la somme de ${balances.codToRemitToAgency.toStringAsFixed(2)} MAD à l\'agence ?\n\nCette action débloquera +${balances.pendingCommission.toStringAsFixed(2)} MAD sur son solde retirable.'),
+                                            actions: [
+                                              TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Annuler')),
+                                              ElevatedButton(
+                                                onPressed: () => Navigator.of(ctx).pop(true),
+                                                child: const Text('Confirmer'),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                        if (ok == true) {
+                                          await CaisseRemittanceHelper.validateDriverRemittance(
+                                            supabase: supabase,
+                                            driverId: dId,
+                                            orders: driverOrders,
+                                          );
+                                          if (context.mounted) {
+                                            ScaffoldMessenger.of(context).showSnackBar(
+                                              SnackBar(
+                                                content: Text('Caisse validée pour $name.'),
+                                              ),
+                                            );
+                                          }
+                                        }
+                                      },
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                                        decoration: BoxDecoration(
+                                          color: AmeexColors.primaryBlue,
+                                          borderRadius: BorderRadius.circular(999),
+                                        ),
+                                        child: const Text(
+                                          'Valider',
+                                          style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Colors.white),
+                                        ),
+                                      ),
+                                    ),
+                                ],
                               ),
                             ],
                           ),
@@ -2002,6 +2572,94 @@ class AdminProfileTab extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _confirmDeleteDriver({
+    required BuildContext context,
+    required String driverId,
+    required String driverName,
+    required int activeOrders,
+  }) async {
+    final supabase = Supabase.instance.client;
+
+    if (activeOrders > 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Impossible de supprimer $driverName : $activeOrders commande(s) en cours.',
+          ),
+          backgroundColor: AmeexColors.dangerRed,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: const Text(
+          'Supprimer ce livreur ?',
+          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+        ),
+        content: Text(
+          'Vous allez supprimer le profil de $driverName. Cette action est irréversible.',
+          style: const TextStyle(fontSize: 14, color: AmeexColors.textMuted),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Annuler'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AmeexColors.dangerRed,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Supprimer'),
+          ),
+        ],
+      ),
+    );
+
+    if (ok != true) return;
+
+    try {
+      // Server-side RPC removes the profile AND the auth.users entry
+      // (defined in Supabase: SECURITY DEFINER function `public.delete_driver`).
+      await supabase.rpc('delete_driver', params: {'driver_id': driverId});
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('$driverName supprimé.')),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        final raw = e.toString().toLowerCase();
+        String msg;
+        if (raw.contains('could not find the function') ||
+            raw.contains('does not exist') ||
+            raw.contains('pgrst202')) {
+          msg = 'Fonction delete_driver manquante dans Supabase. '
+              'Exécutez le script SQL d\'installation.';
+        } else if (raw.contains('unauthorized')) {
+          msg = 'Action réservée aux administrateurs.';
+        } else {
+          final clean = e.toString().replaceAll(RegExp(r'[{}"]'), '').trim();
+          msg = clean.length > 140 ? '${clean.substring(0, 140)}…' : clean;
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(msg),
+            backgroundColor: AmeexColors.dangerRed,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
+    }
   }
 }
 
@@ -2022,6 +2680,7 @@ Widget _buildOrderCard(BuildContext context, Map<String, dynamic> order, Color d
 
   final bool isCancelled = status == 'cancelled';
   final bool isAcceptedWaitingAgency = status == 'accepted' || address.toString().contains('[ETAT: ACCEPTE_ATTENTE_AGENCE]');
+  final effectiveStatus = isAcceptedWaitingAgency ? 'accepted' : status;
 
   return AmeexFadeSlideIn(
     child: AmeexPressable(
@@ -2031,193 +2690,319 @@ Widget _buildOrderCard(BuildContext context, Map<String, dynamic> order, Color d
         );
       },
       child: Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isAcceptedWaitingAgency
-              ? Colors.amber.shade600
-              : isCancelled
-                  ? Colors.redAccent.withValues(alpha: 0.5)
-                  : const Color(0xFFF1F5F9),
-          width: (isAcceptedWaitingAgency || isCancelled) ? 1.5 : 1.0,
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF0E1116).withValues(alpha: 0.025),
+              blurRadius: 1,
+              offset: const Offset(0, 1),
+            ),
+            BoxShadow(
+              color: const Color(0xFF0E1116).withValues(alpha: 0.04),
+              blurRadius: 16,
+              offset: const Offset(0, 6),
+            ),
+          ],
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              CircleAvatar(
-                radius: 20,
-                backgroundColor: const Color(0xFFE2E8F0),
-                child: Text(
-                  customerName.isNotEmpty ? customerName[0].toUpperCase() : 'C',
-                  style: TextStyle(color: deepNavy, fontWeight: FontWeight.bold, fontSize: 15),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '$customerName ($tracking)',
-                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+              // Header row — avatar + name/meta + amount & status
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 42, height: 42,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          AmeexColors.primaryBlue.withValues(alpha: 0.08),
+                          AmeexColors.primaryBlue.withValues(alpha: 0.02),
+                        ],
+                      ),
+                      border: Border.all(
+                        color: AmeexColors.primaryBlue.withValues(alpha: 0.12),
+                        width: 1,
+                      ),
                     ),
-                    const SizedBox(height: 3),
-                    Row(
+                    alignment: Alignment.center,
+                    child: Text(
+                      customerName.isNotEmpty ? customerName[0].toUpperCase() : 'C',
+                      style: const TextStyle(
+                        color: AmeexColors.primaryBlue,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFEFF5FF),
-                            borderRadius: BorderRadius.circular(4),
-                            border: Border.all(color: const Color(0xFFBFDBFE)),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.inventory_2_outlined, size: 11, color: AmeexColors.primaryBlue),
-                              const SizedBox(width: 3),
-                              Text(
-                                parcelNumber,
-                                style: const TextStyle(fontSize: 10, fontFamily: 'monospace', fontWeight: FontWeight.bold, color: AmeexColors.primaryBlue),
-                              ),
-                            ],
+                        Text(
+                          customerName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: -0.2,
+                            color: Color(0xFF0E1116),
+                            height: 1.2,
                           ),
                         ),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            '$city • $address',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                        const SizedBox(height: 3),
+                        Row(
+                          children: [
+                            Text(
+                              tracking,
+                              style: const TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 0.3,
+                                color: AmeexColors.primaryBlue,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Container(
+                              width: 3, height: 3,
+                              decoration: const BoxDecoration(
+                                color: AmeexColors.textFaint,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                city,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w500,
+                                  color: AmeexColors.textMuted,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      RichText(
+                        textAlign: TextAlign.right,
+                        text: TextSpan(
+                          children: [
+                            TextSpan(
+                              text: '$amount',
+                              style: const TextStyle(
+                                fontFamily: AmeexTheme.fontFamily,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: -0.4,
+                                color: Color(0xFF0E1116),
+                              ),
+                            ),
+                            const TextSpan(
+                              text: ' MAD',
+                              style: TextStyle(
+                                fontFamily: AmeexTheme.fontFamily,
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w600,
+                                color: AmeexColors.textFaint,
+                                letterSpacing: 0.3,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 7),
+                      _buildStatusBadge(effectiveStatus),
+                    ],
+                  ),
+                ],
+              ),
+
+              // Address line (muted, icon-led) — only if meaningful
+              if (address.toString().trim().isNotEmpty) ...[
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    const Icon(Icons.place_outlined, size: 14, color: Color(0xFF9CA3AF)),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        address.toString(),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 12.5,
+                          color: Color(0xFF6B7280),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.qr_code_2_rounded, size: 13, color: Color(0xFF9CA3AF)),
+                        const SizedBox(width: 4),
+                        Text(
+                          parcelNumber,
+                          style: const TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF6B7280),
+                            letterSpacing: 0.2,
                           ),
                         ),
                       ],
                     ),
                   ],
                 ),
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    '$amount MAD',
-                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
-                  ),
-                  const SizedBox(height: 4),
-                  _buildStatusBadge(isAcceptedWaitingAgency ? 'accepted' : status),
-                ],
-              ),
-            ],
-          ),
+              ],
 
-          // ASSIGNED DRIVER AVATAR BADGE
-          if (order['assigned_driver_id'] != null)
-            FutureBuilder<Map<String, dynamic>?>(
-              future: AdminDriverCache.getDriver(order['assigned_driver_id']),
-              builder: (context, snapshot) {
-                final driver = snapshot.data;
-                if (driver == null) return const SizedBox.shrink();
-                final dName = driver['full_name'] ?? 'Livreur';
-                return Container(
-                  margin: const EdgeInsets.only(top: 8),
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFEFF5FF),
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: AmeexColors.primaryBlue.withValues(alpha: 0.15)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      DriverAvatar(
-                        driverData: driver,
-                        radius: 10,
-                        borderColor: AmeexColors.primaryBlue,
-                        borderWidth: 1,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        'Livreur : $dName',
-                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AmeexColors.primaryBlue),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
+              // Divider when we have extra sections
+              if (order['assigned_driver_id'] != null ||
+                  (order['dest_latitude'] != null && order['dest_longitude'] != null) ||
+                  isAcceptedWaitingAgency ||
+                  status == 'delivered' ||
+                  (isCancelled && address.toString().contains('[MOTIF:')))
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 10),
+                  child: Divider(height: 1, color: Color(0xFFF0F1F4)),
+                ),
 
-          // SYNCHRONIZED CLIENT LOCATION BADGE (Pointed by Driver on Map)
-          if (order['dest_latitude'] != null && order['dest_longitude'] != null) ...[
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(
-                color: const Color(0xFFDCFCE7),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFF86EFAC)),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.location_on, size: 14, color: Color(0xFF16A34A)),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      'Position client synchronisée : ${(order['dest_latitude'] as num).toDouble().toStringAsFixed(4)}, ${(order['dest_longitude'] as num).toDouble().toStringAsFixed(4)}',
-                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF166534)),
+              // Driver line — single compact row, no pill
+              if (order['assigned_driver_id'] != null)
+                FutureBuilder<Map<String, dynamic>?>(
+                  future: AdminDriverCache.getDriver(order['assigned_driver_id']),
+                  builder: (context, snapshot) {
+                    final driver = snapshot.data;
+                    if (driver == null) return const SizedBox.shrink();
+                    final dName = driver['full_name'] ?? 'Livreur';
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 2),
+                      child: Row(
+                        children: [
+                          DriverAvatar(
+                            driverData: driver,
+                            radius: 11,
+                            borderColor: Colors.transparent,
+                            borderWidth: 0,
+                          ),
+                          const SizedBox(width: 8),
+                          const Text(
+                            'Livreur',
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w500,
+                              color: Color(0xFF9CA3AF),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              dName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF0E1116),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+
+              // Client location — subtle neutral row with "Voir" link
+              if (order['dest_latitude'] != null && order['dest_longitude'] != null) ...[
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    const Icon(Icons.gps_fixed_rounded, size: 14, color: Color(0xFF10B981)),
+                    const SizedBox(width: 6),
+                    const Expanded(
+                      child: Text(
+                        'Position client synchronisée',
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w500,
+                          color: Color(0xFF6B7280),
+                        ),
+                      ),
                     ),
-                  ),
-                  const Text('Carte ➔', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF166534))),
-                ],
-              ),
-            ),
-          ],
+                    Text(
+                      'Voir la carte',
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                        color: AmeexColors.primaryBlue,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Icon(Icons.arrow_forward_rounded,
+                        size: 14, color: AmeexColors.primaryBlue),
+                  ],
+                ),
+              ],
 
           // ACTION BOUTON POUR L'ADMIN : CONFIRMER LA REMISE DU COLIS À L'AGENCE
           if (isAcceptedWaitingAgency) ...[
             const SizedBox(height: 10),
             Container(
-              padding: const EdgeInsets.all(10),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: const Color(0xFFFFFBEB),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFFFDE68A)),
+                color: const Color(0xFFFAFAFB),
+                borderRadius: BorderRadius.circular(12),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    '📍 Le livreur a accepté la mission et se dirige vers l\'agence pour récupérer le colis.',
-                    style: TextStyle(fontSize: 12, color: Color(0xFF92400E), fontWeight: FontWeight.w500),
+                  Row(
+                    children: const [
+                      Icon(Icons.schedule_rounded, size: 14, color: Color(0xFFD97706)),
+                      SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          'Livreur en route vers l\'agence pour récupérer le colis.',
+                          style: TextStyle(fontSize: 12.5, color: Color(0xFF374151), fontWeight: FontWeight.w500),
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 10),
                   SizedBox(
                     width: double.infinity,
-                    height: 38,
-                    child: ElevatedButton.icon(
+                    height: 42,
+                    child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF10B981),
+                        backgroundColor: AmeexColors.primaryBlue,
                         foregroundColor: Colors.white,
                         elevation: 0,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                       ),
-                      icon: const Icon(Icons.inventory_rounded, size: 18),
-                      label: const Text(
-                        'Confirmer la remise du colis au livreur',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                      child: const Text(
+                        'Confirmer la remise au livreur',
+                        style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
                       ),
                       onPressed: () async {
                         try {
@@ -2251,40 +3036,37 @@ Widget _buildOrderCard(BuildContext context, Map<String, dynamic> order, Color d
 
           // CAISSE ENCAISSEMENT ADMIN ACTION (COD REMITTANCE VALIDATION)
           if (status == 'delivered') ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             Builder(
               builder: (context) {
                 final isRemitted = CaisseRemittanceHelper.isRemitted(order);
-                return Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: isRemitted ? const Color(0xFFDCFCE7) : const Color(0xFFFFFBEB),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: isRemitted ? const Color(0xFF86EFAC) : const Color(0xFFFDE68A)),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
+                return Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Row(
                         children: [
                           Icon(
-                            isRemitted ? Icons.check_circle_rounded : Icons.pending_actions_rounded,
-                            size: 15,
-                            color: isRemitted ? const Color(0xFF16A34A) : const Color(0xFFD97706),
+                            isRemitted ? Icons.check_circle_outline_rounded : Icons.schedule_rounded,
+                            size: 14,
+                            color: isRemitted ? const Color(0xFF10B981) : const Color(0xFFD97706),
                           ),
                           const SizedBox(width: 6),
-                          Text(
-                            isRemitted
-                                ? 'Caisse agence reçue & validée'
-                                : 'Caisse en attente ($amount MAD à encaisser)',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              color: isRemitted ? const Color(0xFF166534) : const Color(0xFFB45309),
+                          Expanded(
+                            child: Text(
+                              isRemitted
+                                  ? 'Caisse validée'
+                                  : 'Caisse en attente · $amount MAD',
+                              style: const TextStyle(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w500,
+                                color: Color(0xFF6B7280),
+                              ),
                             ),
                           ),
                         ],
                       ),
+                    ),
                       if (!isRemitted && order['assigned_driver_id'] != null)
                         InkWell(
                           onTap: () async {
@@ -2321,88 +3103,93 @@ Widget _buildOrderCard(BuildContext context, Map<String, dynamic> order, Color d
                             }
                           },
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF10B981),
-                              borderRadius: BorderRadius.circular(6),
+                              color: AmeexColors.primaryBlue,
+                              borderRadius: BorderRadius.circular(999),
                             ),
                             child: const Text(
-                              'Valider Caisse',
-                              style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
+                              'Valider',
+                              style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Colors.white),
                             ),
                           ),
                         ),
-                    ],
-                  ),
+                  ],
                 );
               },
             ),
           ],
 
-          // If cancelled, show motif alert banner!
+          // If cancelled, show motif alert banner (subtle)
           if (isCancelled && address.toString().contains('[MOTIF:')) ...[
-            const SizedBox(height: 8),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFEE2E2),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                address.toString().substring(address.toString().indexOf('[MOTIF:')),
-                style: const TextStyle(color: Color(0xFF991B1B), fontSize: 11, fontWeight: FontWeight.bold),
-              ),
+            const SizedBox(height: 10),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.info_outline_rounded, size: 14, color: Color(0xFFDC2626)),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    address.toString().substring(address.toString().indexOf('[MOTIF:')),
+                    style: const TextStyle(color: Color(0xFF6B7280), fontSize: 12, fontWeight: FontWeight.w500),
+                  ),
+                ),
+              ],
             ),
           ],
         ],
       ),
     ),
     ),
+    ),
   );
 }
 
 Widget _buildStatusBadge(String status) {
-  Color bg;
-  Color text;
+  Color dot;
   String label;
 
   switch (status) {
     case 'delivered':
-      bg = const Color(0xFFD1FAE5);
-      text = const Color(0xFF065F46);
+      dot = const Color(0xFF10B981);
       label = 'Livré';
       break;
     case 'in_transit':
-      bg = const Color(0xFFDBEAFE);
-      text = const Color(0xFF1E40AF);
+      dot = AmeexColors.primaryBlue;
       label = 'En transit';
       break;
     case 'accepted':
-      bg = const Color(0xFFFEF3C7);
-      text = const Color(0xFF92400E);
-      label = 'En attente agence';
+      dot = const Color(0xFFF59E0B);
+      label = 'En attente';
       break;
     case 'cancelled':
-      bg = const Color(0xFFFEE2E2);
-      text = const Color(0xFF991B1B);
+      dot = const Color(0xFFDC2626);
       label = 'Annulé';
       break;
     default:
-      bg = const Color(0xFFFFEDD5);
-      text = const Color(0xFF9A3412);
+      dot = const Color(0xFF9CA3AF);
       label = 'En attente';
   }
 
   return Container(
-    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
     decoration: BoxDecoration(
-      color: bg,
-      borderRadius: BorderRadius.circular(6),
+      color: dot.withValues(alpha: 0.10),
+      borderRadius: BorderRadius.circular(999),
     ),
-    child: Text(
-      label,
-      style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: text),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 6, height: 6,
+          decoration: BoxDecoration(color: dot, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 6),
+        Text(
+          label,
+          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: dot),
+        ),
+      ],
     ),
   );
 }

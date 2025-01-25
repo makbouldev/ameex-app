@@ -11,6 +11,7 @@ import 'package:http/http.dart' as http;
 import '../theme/ameex_theme.dart';
 import '../widgets/driver_avatar.dart';
 import '../widgets/ameex_animations.dart';
+import '../widgets/ameex_ui.dart';
 import '../widgets/parcel_scanner_dialog.dart';
 import '../widgets/caisse_remittance_helper.dart';
 
@@ -1400,7 +1401,7 @@ class _DriverLiveMapTabState extends State<DriverLiveMapTab> {
                     const SizedBox(height: 14),
 
                     if (_isLoadingOrder)
-                      const Center(child: CircularProgressIndicator(color: AmeexColors.primaryBlue))
+                      const Center(child: AmeexLoading())
                     else if (!hasActiveOrder) ...[
                       Row(
                         children: [
@@ -1894,7 +1895,7 @@ class DriverHistoryTab extends StatelessWidget {
             .order('updated_at', ascending: false),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator(color: AmeexColors.primaryBlue));
+            return const Center(child: AmeexLoading());
           }
 
           final allOrders = snapshot.data ?? [];

@@ -4,6 +4,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../theme/ameex_theme.dart';
+import '../widgets/ameex_ui.dart';
 
 class LiveTrackingScreen extends StatefulWidget {
   const LiveTrackingScreen({super.key});
@@ -172,7 +173,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen> {
         centerTitle: true,
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: AmeexColors.primaryBlue))
+          ? const Center(child: AmeexLoading())
           : Column(
               children: [
                 // 1. TOP HALF: MAP WITH REAL-TIME DRIVER MARKERS

@@ -253,11 +253,40 @@ class _AddDriverScreenState extends State<AddDriverScreen> {
       );
     } catch (e) {
       if (!mounted) return;
+      final raw = e.toString().toLowerCase();
+      String msg;
+      if (raw.contains('email rate limit') ||
+          raw.contains('over_email_send_rate_limit') ||
+          raw.contains('429')) {
+        msg = 'Limite d\'envoi d\'emails atteinte. Désactivez la confirmation d\'email dans Supabase ou patientez une heure.';
+      } else if (raw.contains('already registered') ||
+          raw.contains('user already') ||
+          raw.contains('duplicate')) {
+        msg = 'Cet email est déjà utilisé.';
+      } else if (raw.contains('weak password') ||
+          raw.contains('password should')) {
+        msg = 'Mot de passe trop faible (6 caractères minimum).';
+      } else if (raw.contains('invalid') && raw.contains('email')) {
+        msg = 'Email invalide.';
+      } else if (raw.contains('network') || raw.contains('socket')) {
+        msg = 'Connexion internet indisponible.';
+      } else {
+        final clean = e.toString().replaceAll(RegExp(r'[{}"]'), '').trim();
+        msg = clean.length > 140 ? '${clean.substring(0, 140)}…' : clean;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Erreur: ${e.toString()}'),
-          backgroundColor: Colors.redAccent,
+          content: Row(
+            children: [
+              const Icon(Icons.error_outline_rounded,
+                  color: Colors.white, size: 18),
+              const SizedBox(width: 10),
+              Expanded(child: Text(msg)),
+            ],
+          ),
+          backgroundColor: AmeexColors.dangerRed,
           behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 5),
         ),
       );
     } finally {
