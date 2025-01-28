@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../theme/ameex_theme.dart';
 import '../widgets/driver_avatar.dart';
 import '../widgets/ameex_animations.dart';
+import '../widgets/ameex_ui.dart';
 import '../widgets/parcel_scanner_dialog.dart';
 
 class RouteHistoryScreen extends StatefulWidget {
@@ -162,7 +163,7 @@ class _RouteHistoryScreenState extends State<RouteHistoryScreen> {
         centerTitle: true,
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: AmeexColors.primaryBlue))
+          ? const Center(child: AmeexLoading())
           : Column(
               children: [
                 // 1. TOP HALF: MAP WITH HISTORICAL POLYLINE
