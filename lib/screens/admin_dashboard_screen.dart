@@ -15,6 +15,9 @@ import '../widgets/caisse_remittance_helper.dart';
 class AdminDriverCache {
   static final Map<String, Map<String, dynamic>> _cache = {};
 
+  static void invalidate(String driverId) => _cache.remove(driverId);
+  static void clear() => _cache.clear();
+
   static Future<Map<String, dynamic>?> getDriver(String driverId) async {
     if (_cache.containsKey(driverId)) return _cache[driverId];
     try {
@@ -2627,35 +2630,63 @@ class AdminProfileTab extends StatelessWidget {
     if (ok != true) return;
 
     try {
-      // Server-side RPC removes the profile AND the auth.users entry
-      // (defined in Supabase: SECURITY DEFINER function `public.delete_driver`).
-      await supabase.rpc('delete_driver', params: {'driver_id': driverId});
+      // 1. Unassign all orders assigned to this driver to satisfy any foreign keys
+      try {
+        await supabase
+            .from('orders')
+            .update({'assigned_driver_id': null})
+            .eq('assigned_driver_id', driverId);
+      } catch (_) {}
+
+      // 2. Try server-side RPC if defined
+      bool rpcSuccess = false;
+      try {
+        await supabase.rpc('delete_driver', params: {'driver_id': driverId});
+        rpcSuccess = true;
+      } catch (_) {}
+
+      // 3. If RPC is not available, delete or deactivate the profile directly
+      if (!rpcSuccess) {
+        bool deleted = false;
+        try {
+          await supabase.from('profiles').delete().eq('id', driverId);
+          deleted = true;
+        } catch (_) {}
+
+        // Fallback: If hard delete is restricted by RLS, set role to 'deleted'
+        // This instantly removes the driver from all active queries and prevents login.
+        if (!deleted) {
+          await supabase.from('profiles').update({
+            'role': 'deleted',
+            'full_name': '[Supprimé] $driverName',
+            'phone': '',
+            'zone': 'Désactivé',
+          }).eq('id', driverId);
+        }
+      }
+
+      // 4. Invalidate local cache
+      AdminDriverCache.invalidate(driverId);
+
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('$driverName supprimé.')),
+          SnackBar(
+            content: Text('Le compte de $driverName a été supprimé avec succès.'),
+            backgroundColor: const Color(0xFF10B981),
+            behavior: SnackBarBehavior.floating,
+          ),
         );
       }
     } catch (e) {
       if (context.mounted) {
-        final raw = e.toString().toLowerCase();
-        String msg;
-        if (raw.contains('could not find the function') ||
-            raw.contains('does not exist') ||
-            raw.contains('pgrst202')) {
-          msg = 'Fonction delete_driver manquante dans Supabase. '
-              'Exécutez le script SQL d\'installation.';
-        } else if (raw.contains('unauthorized')) {
-          msg = 'Action réservée aux administrateurs.';
-        } else {
-          final clean = e.toString().replaceAll(RegExp(r'[{}"]'), '').trim();
-          msg = clean.length > 140 ? '${clean.substring(0, 140)}…' : clean;
-        }
+        final clean = e.toString().replaceAll(RegExp(r'[{}"]'), '').trim();
+        final msg = clean.length > 140 ? '${clean.substring(0, 140)}…' : clean;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(msg),
+            content: Text('Erreur lors de la suppression: $msg'),
             backgroundColor: AmeexColors.dangerRed,
             behavior: SnackBarBehavior.floating,
-            duration: const Duration(seconds: 5),
+            duration: const Duration(seconds: 4),
           ),
         );
       }

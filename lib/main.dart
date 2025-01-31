@@ -70,11 +70,20 @@ class AuthGate extends StatelessWidget {
             final role = data?['role']?.toString();
             final email = session.user.email ?? '';
 
+            // Block deleted or deactivated driver accounts from resuming session
+            if (!email.contains('admin') && (data == null || role == 'deleted' || role == 'inactive')) {
+              supabase.auth.signOut();
+              return const LoginScreen();
+            }
+
             // If profile role is admin OR email contains 'admin' -> Admin Dashboard
             if (role == 'admin' || email.contains('admin')) {
               return const AdminDashboardScreen();
-            } else {
+            } else if (role == 'driver') {
               return const DriverHomeScreen();
+            } else {
+              supabase.auth.signOut();
+              return const LoginScreen();
             }
           },
         );

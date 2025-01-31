@@ -61,14 +61,23 @@ class _LoginScreenState extends State<LoginScreen> {
       final role = profile?['role']?.toString();
       final userEmail = user.email ?? '';
 
+      // Block deleted or deactivated driver accounts
+      if (!userEmail.contains('admin') && (profile == null || role == 'deleted' || role == 'inactive')) {
+        await supabase.auth.signOut();
+        throw const AuthException('Ce compte livreur a été supprimé ou désactivé par l\'administrateur.');
+      }
+
       if (role == 'admin' || userEmail.contains('admin')) {
         Navigator.of(context).pushReplacement(
           AmeexPageRoute(page: const AdminDashboardScreen()),
         );
-      } else {
+      } else if (role == 'driver') {
         Navigator.of(context).pushReplacement(
           AmeexPageRoute(page: const DriverHomeScreen()),
         );
+      } else {
+        await supabase.auth.signOut();
+        throw const AuthException('Accès refusé. Ce compte ne dispose pas des autorisations nécessaires.');
       }
     } on AuthException catch (e) {
       if (!mounted) return;
