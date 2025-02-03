@@ -299,21 +299,31 @@ class _AddDriverScreenState extends State<AddDriverScreen> {
     const deepNavy = AmeexColors.primaryBlue;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: AmeexColors.background,
       appBar: AppBar(
         backgroundColor: Colors.white,
-        elevation: 0.5,
+        surfaceTintColor: Colors.white,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        centerTitle: false,
+        titleSpacing: 4,
+        toolbarHeight: 60,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Color(0xFF0F172A)),
+          icon: const Icon(Icons.arrow_back_rounded, color: AmeexColors.textDark, size: 22),
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: const Text(
-          'Nouveau Livreur',
-          style: TextStyle(color: Color(0xFF0F172A), fontWeight: FontWeight.bold, fontSize: 18),
+          'Nouveau livreur',
+          style: TextStyle(
+            color: AmeexColors.textDark,
+            fontWeight: FontWeight.w700,
+            fontSize: 18,
+            letterSpacing: -0.3,
+          ),
         ),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+        padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
         child: AmeexFadeSlideIn(
           child: Form(
             key: _formKey,
@@ -322,15 +332,24 @@ class _AddDriverScreenState extends State<AddDriverScreen> {
             children: [
               // Header
               const Text(
-                'Création du compte Livreur Ameex',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                'Créer un compte livreur',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.5,
+                  color: AmeexColors.textDark,
+                ),
               ),
               const SizedBox(height: 4),
               const Text(
-                'Remplissez les informations pour générer ses accès et affecter sa zone.',
-                style: TextStyle(color: Color(0xFF64748B), fontSize: 13),
+                'Informations, zone de livraison et accès de connexion.',
+                style: TextStyle(
+                  color: AmeexColors.textMuted,
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 22),
 
               // 0. PHOTO DE PROFIL DU LIVREUR (SELECTION DEPUIS LA GALERIE)
               Container(
@@ -701,20 +720,27 @@ class _AddDriverScreenState extends State<AddDriverScreen> {
                 child: ElevatedButton(
                   onPressed: _isSubmitting ? null : _handleCreateDriver,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: deepNavy,
+                    backgroundColor: AmeexColors.primaryBlue,
                     foregroundColor: Colors.white,
-                    elevation: 2,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                   ),
                   child: _isSubmitting
                       ? const SizedBox(
                           width: 22,
                           height: 22,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white),
                         )
-                      : const Text(
-                          'Enregistrer & Créer le compte Livreur',
-                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                      : const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              'Créer le compte livreur',
+                              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                            ),
+                            SizedBox(width: 8),
+                            Icon(Icons.arrow_forward_rounded, size: 18),
+                          ],
                         ),
                 ),
               ),
@@ -731,33 +757,46 @@ class _AddDriverScreenState extends State<AddDriverScreen> {
   Widget _buildLabel(String text) {
     return Text(
       text,
-      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF334155)),
+      style: const TextStyle(
+        fontSize: 13,
+        fontWeight: FontWeight.w600,
+        color: AmeexColors.textDark,
+        letterSpacing: -0.1,
+      ),
     );
   }
 
   BoxDecoration _fieldBoxDecoration() {
     return BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(10),
-      border: Border.all(color: const Color(0xFFE2E8F0)),
+      color: AmeexColors.surfaceAlt,
+      borderRadius: BorderRadius.circular(14),
     );
   }
 
   InputDecoration _inputDecoration({required String hint, Widget? prefixIcon, Widget? suffixIcon}) {
     return InputDecoration(
       filled: true,
-      fillColor: Colors.white,
+      fillColor: AmeexColors.surfaceAlt,
       hintText: hint,
+      hintStyle: const TextStyle(
+        color: AmeexColors.textFaint,
+        fontSize: 14,
+        fontWeight: FontWeight.w500,
+      ),
       prefixIcon: prefixIcon,
       suffixIcon: suffixIcon,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide.none,
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: Color(0xFF0A192F), width: 1.2),
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: AmeexColors.primaryBlue, width: 1.5),
+      ),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide.none,
       ),
     );
   }

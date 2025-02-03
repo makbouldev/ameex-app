@@ -180,20 +180,26 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
     const navyColor = AmeexColors.primaryBlue;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: AmeexColors.background,
       appBar: AppBar(
         backgroundColor: Colors.white,
-        elevation: 0.5,
+        surfaceTintColor: Colors.white,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        centerTitle: false,
+        titleSpacing: 4,
+        toolbarHeight: 60,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Color(0xFF0F172A)),
+          icon: const Icon(Icons.arrow_back_rounded, color: AmeexColors.textDark, size: 22),
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: const Text(
-          'Ajouter Commande',
+          'Nouvelle commande',
           style: TextStyle(
-            color: Color(0xFF0F172A),
-            fontWeight: FontWeight.bold,
+            color: AmeexColors.textDark,
+            fontWeight: FontWeight.w700,
             fontSize: 18,
+            letterSpacing: -0.3,
           ),
         ),
       ),
@@ -645,24 +651,31 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
               // Submit Button
               SizedBox(
                 width: double.infinity,
-                height: 52,
+                height: 54,
                 child: ElevatedButton(
                   onPressed: _isSubmitting ? null : _submitOrder,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: navyColor,
+                    backgroundColor: AmeexColors.primaryBlue,
                     foregroundColor: Colors.white,
-                    elevation: 2,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                   ),
                   child: _isSubmitting
                       ? const SizedBox(
                           width: 22,
                           height: 22,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white),
                         )
-                      : const Text(
-                          'Transmettre la commande au livreur',
-                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                      : const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              'Transmettre la commande',
+                              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                            ),
+                            SizedBox(width: 8),
+                            Icon(Icons.arrow_forward_rounded, size: 18),
+                          ],
                         ),
                 ),
               ),
@@ -679,35 +692,52 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
   Widget _buildLabel(String text) {
     return Text(
       text,
-      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF334155)),
+      style: const TextStyle(
+        fontSize: 13,
+        fontWeight: FontWeight.w600,
+        color: AmeexColors.textDark,
+        letterSpacing: -0.1,
+      ),
     );
   }
 
   BoxDecoration _fieldBoxDecoration() {
     return BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(10),
-      border: Border.all(color: const Color(0xFFE2E8F0)),
+      color: AmeexColors.surfaceAlt,
+      borderRadius: BorderRadius.circular(14),
     );
   }
 
   InputDecoration _inputDecoration({required String hint, Widget? prefixIcon, Widget? suffixIcon, String? suffixText}) {
     return InputDecoration(
       filled: true,
-      fillColor: Colors.white,
+      fillColor: AmeexColors.surfaceAlt,
       hintText: hint,
+      hintStyle: const TextStyle(
+        color: AmeexColors.textFaint,
+        fontSize: 14,
+        fontWeight: FontWeight.w500,
+      ),
       prefixIcon: prefixIcon,
       suffixIcon: suffixIcon,
       suffixText: suffixText,
-      suffixStyle: const TextStyle(color: Colors.black54, fontWeight: FontWeight.w600),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      suffixStyle: const TextStyle(
+        color: AmeexColors.textMuted,
+        fontWeight: FontWeight.w600,
+        fontSize: 13,
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide.none,
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: Color(0xFF0A192F), width: 1.2),
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: AmeexColors.primaryBlue, width: 1.5),
+      ),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide.none,
       ),
     );
   }

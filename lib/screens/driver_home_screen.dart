@@ -40,16 +40,9 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
         ],
       ),
       bottomNavigationBar: Container(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           color: Colors.white,
-          border: Border(top: BorderSide(color: const Color(0xFFE2E8F0), width: 0.8)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 10,
-              offset: const Offset(0, -2),
-            ),
-          ],
+          border: Border(top: BorderSide(color: AmeexColors.divider, width: 1)),
         ),
         child: BottomNavigationBar(
           currentIndex: _currentNavIndex,
@@ -57,24 +50,29 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
           type: BottomNavigationBarType.fixed,
           backgroundColor: Colors.white,
           selectedItemColor: deepNavy,
-          unselectedItemColor: const Color(0xFF94A3B8),
-          selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
-          unselectedLabelStyle: const TextStyle(fontSize: 11),
+          unselectedItemColor: AmeexColors.textFaint,
+          selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 11.5),
+          unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 11.5),
+          elevation: 0,
           items: const [
             BottomNavigationBarItem(
-              icon: Icon(Icons.navigation_rounded),
+              icon: Padding(padding: EdgeInsets.only(bottom: 2), child: Icon(Icons.navigation_outlined, size: 22)),
+              activeIcon: Padding(padding: EdgeInsets.only(bottom: 2), child: Icon(Icons.navigation_rounded, size: 22)),
               label: 'Course',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.history_rounded),
+              icon: Padding(padding: EdgeInsets.only(bottom: 2), child: Icon(Icons.history_outlined, size: 22)),
+              activeIcon: Padding(padding: EdgeInsets.only(bottom: 2), child: Icon(Icons.history_rounded, size: 22)),
               label: 'Historique',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.account_balance_wallet_rounded),
+              icon: Padding(padding: EdgeInsets.only(bottom: 2), child: Icon(Icons.account_balance_wallet_outlined, size: 22)),
+              activeIcon: Padding(padding: EdgeInsets.only(bottom: 2), child: Icon(Icons.account_balance_wallet_rounded, size: 22)),
               label: 'Revenus',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.person_rounded),
+              icon: Padding(padding: EdgeInsets.only(bottom: 2), child: Icon(Icons.person_outline_rounded, size: 22)),
+              activeIcon: Padding(padding: EdgeInsets.only(bottom: 2), child: Icon(Icons.person_rounded, size: 22)),
               label: 'Profil',
             ),
           ],
@@ -1880,12 +1878,24 @@ class DriverHistoryTab extends StatelessWidget {
     final user = supabase.auth.currentUser;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: AmeexColors.background,
       appBar: AppBar(
-        backgroundColor: deepNavy,
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
         elevation: 0,
-        title: const Text('Historique des Livraisons', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        centerTitle: true,
+        scrolledUnderElevation: 0,
+        centerTitle: false,
+        titleSpacing: 20,
+        toolbarHeight: 60,
+        title: const Text(
+          'Historique',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.4,
+            color: AmeexColors.textDark,
+          ),
+        ),
       ),
       body: StreamBuilder<List<Map<String, dynamic>>>(
         stream: supabase
@@ -2282,12 +2292,24 @@ class _DriverEarningsTabState extends State<DriverEarningsTab> {
     final user = supabase.auth.currentUser;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: AmeexColors.background,
       appBar: AppBar(
-        backgroundColor: deepNavy,
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
         elevation: 0,
-        title: const Text('Mes Revenus & Caisse Agence', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        centerTitle: true,
+        scrolledUnderElevation: 0,
+        centerTitle: false,
+        titleSpacing: 20,
+        toolbarHeight: 60,
+        title: const Text(
+          'Mes revenus',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.4,
+            color: AmeexColors.textDark,
+          ),
+        ),
       ),
       body: StreamBuilder<List<Map<String, dynamic>>>(
         stream: supabase
@@ -2962,111 +2984,233 @@ class _DriverProfileTabState extends State<DriverProfileTab> {
     const deepNavy = AmeexColors.primaryBlue;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: AmeexColors.background,
       appBar: AppBar(
-        backgroundColor: deepNavy,
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
         elevation: 0,
-        title: const Text('Mon Profil', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        centerTitle: true,
+        scrolledUnderElevation: 0,
+        centerTitle: false,
+        titleSpacing: 20,
+        toolbarHeight: 60,
+        title: const Text(
+          'Profil',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.4,
+            color: AmeexColors.textDark,
+          ),
+        ),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
         child: AmeexFadeSlideIn(
           child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Center(
-              child: DriverAvatar(
-                driverData: _profile,
-                name: _driverName,
-                radius: 46,
-                borderColor: deepNavy,
-                borderWidth: 3,
-                showBadge: true,
-                badgeColor: _isOnline ? const Color(0xFF10B981) : Colors.grey,
-              ),
-            ),
-            const SizedBox(height: 14),
-            Text(_driverName, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
-            const SizedBox(height: 2),
-            Text(_email, style: const TextStyle(fontSize: 13, color: Color(0xFF64748B))),
-
-            const SizedBox(height: 24),
-
+            // Signature hero card
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
+                gradient: AmeexDesign.heroGradient,
+                borderRadius: BorderRadius.circular(22),
+                boxShadow: AmeexDesign.shadowHero,
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              child: Stack(
                 children: [
-                  Row(
-                    children: [
-                      Icon(
-                        _isOnline ? Icons.power_rounded : Icons.power_off_rounded,
-                        color: _isOnline ? const Color(0xFF10B981) : Colors.grey,
+                  Positioned(
+                    top: -30, right: -20,
+                    child: Container(
+                      width: 140, height: 140,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: RadialGradient(
+                          colors: [
+                            Colors.white.withValues(alpha: 0.10),
+                            Colors.white.withValues(alpha: 0),
+                          ],
+                        ),
                       ),
-                      const SizedBox(width: 12),
-                      Text(
-                        _isOnline ? 'Statut : Disponible (En Ligne)' : 'Statut : Hors Ligne',
-                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                    ),
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          // Avatar with gradient ring
+                          Container(
+                            padding: const EdgeInsets.all(2),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.white.withValues(alpha: 0.22),
+                            ),
+                            child: DriverAvatar(
+                              driverData: _profile,
+                              name: _driverName,
+                              radius: 28,
+                              borderColor: Colors.white,
+                              borderWidth: 1.6,
+                              showBadge: true,
+                              badgeColor: _isOnline ? const Color(0xFF34D399) : Colors.white.withValues(alpha: 0.4),
+                            ),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'LIVREUR AMEEX',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 1.6,
+                                    color: Colors.white.withValues(alpha: 0.65),
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  _driverName,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 19,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: -0.3,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  _email,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: Colors.white.withValues(alpha: 0.65),
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 18),
+                      Container(
+                        height: 1,
+                        color: Colors.white.withValues(alpha: 0.10),
+                      ),
+                      const SizedBox(height: 14),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                width: 8, height: 8,
+                                decoration: BoxDecoration(
+                                  color: _isOnline ? const Color(0xFF34D399) : Colors.white.withValues(alpha: 0.4),
+                                  shape: BoxShape.circle,
+                                  boxShadow: _isOnline
+                                      ? [
+                                          BoxShadow(
+                                            color: const Color(0xFF34D399).withValues(alpha: 0.8),
+                                            blurRadius: 6,
+                                          ),
+                                        ]
+                                      : null,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                _isOnline ? 'Disponible' : 'Hors ligne',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: -0.1,
+                                ),
+                              ),
+                            ],
+                          ),
+                          Switch.adaptive(
+                            value: _isOnline,
+                            activeColor: Colors.white,
+                            activeTrackColor: const Color(0xFF34D399),
+                            inactiveTrackColor: Colors.white.withValues(alpha: 0.18),
+                            inactiveThumbColor: Colors.white.withValues(alpha: 0.6),
+                            onChanged: (val) => setState(() => _isOnline = val),
+                          ),
+                        ],
                       ),
                     ],
-                  ),
-                  Switch(
-                    value: _isOnline,
-                    activeColor: const Color(0xFF10B981),
-                    onChanged: (val) => setState(() => _isOnline = val),
                   ),
                 ],
               ),
             ),
 
-            const SizedBox(height: 14),
+            const SizedBox(height: 22),
+
+            const Text(
+              'Informations',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.2,
+                color: AmeexColors.textDark,
+              ),
+            ),
+            const SizedBox(height: 12),
 
             Container(
-              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
+                borderRadius: BorderRadius.circular(18),
+                boxShadow: AmeexDesign.shadowCard,
               ),
               child: Column(
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text('Véhicule', style: TextStyle(color: Color(0xFF64748B))),
-                      Text(DriverAvatarHelper.cleanVehicle(_vehicle), style: const TextStyle(fontWeight: FontWeight.bold)),
-                    ],
+                  _infoRow(
+                    icon: Icons.two_wheeler_outlined,
+                    label: 'Véhicule',
+                    value: DriverAvatarHelper.cleanVehicle(_vehicle),
                   ),
-                  const Divider(height: 24),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text('Zone d\'affectation', style: TextStyle(color: Color(0xFF64748B))),
-                      Text(DriverAvatarHelper.cleanZone(_zone), style: const TextStyle(fontWeight: FontWeight.bold)),
-                    ],
+                  const Divider(height: 1, color: AmeexColors.divider, indent: 20, endIndent: 20),
+                  _infoRow(
+                    icon: Icons.place_outlined,
+                    label: 'Zone d\'affectation',
+                    value: DriverAvatarHelper.cleanZone(_zone),
+                  ),
+                  const Divider(height: 1, color: AmeexColors.divider, indent: 20, endIndent: 20),
+                  _infoRow(
+                    icon: Icons.mail_outline_rounded,
+                    label: 'Email',
+                    value: _email,
                   ),
                 ],
               ),
             ),
 
-            const SizedBox(height: 32),
+            const SizedBox(height: 28),
 
             SizedBox(
               width: double.infinity,
-              height: 48,
+              height: 52,
               child: OutlinedButton.icon(
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.redAccent,
-                  side: const BorderSide(color: Colors.redAccent),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  foregroundColor: AmeexColors.dangerRed,
+                  backgroundColor: Colors.white,
+                  side: BorderSide(color: AmeexColors.dangerRed.withValues(alpha: 0.2), width: 1),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                 ),
-                icon: const Icon(Icons.logout),
-                label: const Text('Déconnexion'),
+                icon: const Icon(Icons.logout_rounded, size: 18),
+                label: const Text(
+                  'Se déconnecter',
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                ),
                 onPressed: () async {
                   await supabase.auth.signOut();
                   if (context.mounted) {
@@ -3078,6 +3222,53 @@ class _DriverProfileTabState extends State<DriverProfileTab> {
           ],
         ),
       ),
+      ),
+    );
+  }
+
+  Widget _infoRow({required IconData icon, required String label, required String value}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      child: Row(
+        children: [
+          Container(
+            width: 34, height: 34,
+            decoration: BoxDecoration(
+              color: AmeexColors.primaryBlue.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, size: 17, color: AmeexColors.primaryBlue),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 11.5,
+                    color: AmeexColors.textMuted,
+                    fontWeight: FontWeight.w500,
+                    letterSpacing: 0.1,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: AmeexColors.textDark,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: -0.1,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

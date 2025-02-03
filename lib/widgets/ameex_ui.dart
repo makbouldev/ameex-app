@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import '../theme/ameex_theme.dart';
 
-/// Branded full-screen splash — shown during initial auth/profile loading
-/// and other blocking transitions between pages.
+/// Branded full-screen splash — elegant pulsing brand-blue core
+/// surrounded by expanding rings. Used during auth/profile loading
+/// and other blocking transitions.
 class AmeexSplash extends StatefulWidget {
   final String? message;
   const AmeexSplash({super.key, this.message});
@@ -20,7 +21,7 @@ class _AmeexSplashState extends State<AmeexSplash>
     super.initState();
     _ctrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1400),
+      duration: const Duration(milliseconds: 2000),
     )..repeat();
   }
 
@@ -38,64 +39,73 @@ class _AmeexSplashState extends State<AmeexSplash>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Brand mark with pulsing ring
+            // Pulsing brand mark — rings + core
             SizedBox(
-              width: 86, height: 86,
+              width: 120, height: 120,
               child: Stack(
                 alignment: Alignment.center,
                 children: [
+                  // Two expanding rings offset in phase
+                  for (int i = 0; i < 2; i++)
+                    AnimatedBuilder(
+                      animation: _ctrl,
+                      builder: (context, _) {
+                        final phase = (_ctrl.value + i * 0.5) % 1.0;
+                        final size = 44 + (72 * phase);
+                        final opacity = (1 - phase).clamp(0.0, 1.0) * 0.45;
+                        return Container(
+                          width: size,
+                          height: size,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: AmeexColors.primaryBlue
+                                  .withValues(alpha: opacity),
+                              width: 1.4,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  // Inner core with subtle breathing scale
                   AnimatedBuilder(
                     animation: _ctrl,
-                    builder: (context, _) {
-                      final t = _ctrl.value;
-                      final size = 56 + (24 * t);
-                      final opacity = (1 - t).clamp(0.0, 1.0) * 0.5;
-                      return Container(
-                        width: size,
-                        height: size,
+                    builder: (context, child) {
+                      final s = 0.92 + 0.08 *
+                          ((_ctrl.value * 2 * 3.14159).remainder(6.28318) < 3.14159
+                              ? 1 - (_ctrl.value - 0.25).abs() * 2
+                              : (_ctrl.value - 0.75).abs() * 2);
+                      return Transform.scale(scale: s.clamp(0.9, 1.0), child: child);
+                    },
+                    child: Container(
+                      width: 44, height: 44,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: const LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            Color(0xFF1E3A8A),
+                            AmeexColors.primaryBlue,
+                            AmeexColors.darkNavy,
+                          ],
+                        ),
+                        boxShadow: AmeexDesign.shadowHero,
+                      ),
+                      alignment: Alignment.center,
+                      child: Container(
+                        width: 14, height: 14,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          border: Border.all(
-                            color: AmeexColors.primaryBlue
-                                .withValues(alpha: opacity),
-                            width: 2,
-                          ),
+                          color: Colors.white.withValues(alpha: 0.9),
                         ),
-                      );
-                    },
-                  ),
-                  Container(
-                    width: 56, height: 56,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: const LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          Color(0xFF1E3A8A),
-                          AmeexColors.primaryBlue,
-                          AmeexColors.darkNavy,
-                        ],
-                      ),
-                      boxShadow: AmeexDesign.shadowHero,
-                    ),
-                    alignment: Alignment.center,
-                    child: const Text(
-                      'a',
-                      style: TextStyle(
-                        fontFamily: AmeexTheme.fontFamily,
-                        color: Colors.white,
-                        fontSize: 26,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -1.2,
-                        height: 1,
                       ),
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 28),
             Text(
               widget.message ?? 'Chargement…',
               style: const TextStyle(
