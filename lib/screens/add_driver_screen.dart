@@ -64,9 +64,9 @@ class _AddDriverScreenState extends State<AddDriverScreen> {
       final picker = ImagePicker();
       final XFile? image = await picker.pickImage(
         source: ImageSource.gallery,
-        maxWidth: 600,
-        maxHeight: 600,
-        imageQuality: 85,
+        maxWidth: 240,
+        maxHeight: 240,
+        imageQuality: 50,
       );
 
       if (image != null) {
@@ -93,7 +93,7 @@ class _AddDriverScreenState extends State<AddDriverScreen> {
             _selectedAvatarUrl = publicUrl;
           }
         } catch (_) {
-          // Keep base64 URI
+          // Keep compressed base64 URI
         }
       }
     } catch (e) {
@@ -138,8 +138,15 @@ class _AddDriverScreenState extends State<AddDriverScreen> {
           'p_zone': zoneWithAvatar,
         });
       } catch (rpcError) {
-        // Fallback: If RPC not yet run in SQL editor, register user
-        final res = await supabase.auth.signUp(
+        // Fallback: Use isolated client to register user so admin session is untouched
+        // and header/cookie limits are never exceeded by auth metadata.
+        final tempClient = SupabaseClient(
+          'https://mgnanilybghwxnppwsnc.supabase.co',
+          'sb_publishable_GG9AAryfHTt6M_7gL0fpCw_05KJClnp',
+          authOptions: const AuthClientOptions(authFlowType: AuthFlowType.implicit),
+        );
+
+        final res = await tempClient.auth.signUp(
           email: email,
           password: password,
           data: {
@@ -147,8 +154,7 @@ class _AddDriverScreenState extends State<AddDriverScreen> {
             'role': 'driver',
             'phone': phone,
             'vehicle_type': _selectedVehicle,
-            'zone': zoneWithAvatar,
-            'avatar_url': _selectedAvatarUrl,
+            'zone': _selectedZone,
           },
         );
 
@@ -161,7 +167,7 @@ class _AddDriverScreenState extends State<AddDriverScreen> {
               'role': 'driver',
               'vehicle_type': _selectedVehicle,
               'zone': zoneWithAvatar,
-              'avatar_url': _selectedAvatarUrl,
+              'avatar_url': effectiveAvatarUrl,
             });
           } catch (_) {
             // If avatar_url column does not exist on profiles, zone has [AVATAR:...] tag
