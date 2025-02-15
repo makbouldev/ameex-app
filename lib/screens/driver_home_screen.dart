@@ -1919,19 +1919,43 @@ class DriverHistoryTab extends StatelessWidget {
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: const [
-                  Icon(Icons.inventory_2_outlined, size: 54, color: Color(0xFF94A3B8)),
-                  SizedBox(height: 12),
-                  Text('Aucune course terminée ou indemnisée', style: TextStyle(color: Color(0xFF64748B), fontSize: 15)),
+                children: [
+                  Container(
+                    width: 64, height: 64,
+                    decoration: BoxDecoration(
+                      color: AmeexColors.surfaceAlt,
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: const Icon(Icons.inventory_2_outlined,
+                        size: 28, color: AmeexColors.textFaint),
+                  ),
+                  const SizedBox(height: 14),
+                  const Text(
+                    'Aucune course terminée',
+                    style: TextStyle(
+                      color: AmeexColors.textDark,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Vos livraisons termineés apparaîtront ici.',
+                    style: TextStyle(
+                      color: AmeexColors.textMuted,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
                 ],
               ),
             );
           }
 
-          return ListView.separated(
-            padding: const EdgeInsets.all(16),
+          // Group by day
+          return ListView.builder(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
             itemCount: historyOrders.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 10),
             itemBuilder: (context, index) {
               final order = historyOrders[index];
               final tracking = order['tracking_number'] ?? '#AMX';
@@ -1939,30 +1963,34 @@ class DriverHistoryTab extends StatelessWidget {
               final city = order['destination_city'] ?? 'Casablanca';
               final driverFee = (order['driver_fee'] as num?)?.toDouble() ?? 25.0;
               final bool isCancelledIndemnified = order['status'] == 'cancelled';
+              final accent = isCancelledIndemnified
+                  ? const Color(0xFFF59E0B)
+                  : const Color(0xFF10B981);
 
               return AmeexFadeSlideIn(
                 duration: const Duration(milliseconds: 280),
                 child: Container(
-                  padding: const EdgeInsets.all(14),
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: isCancelledIndemnified ? const Color(0xFFFDE68A) : const Color(0xFFE2E8F0),
-                    ),
+                    borderRadius: BorderRadius.circular(18),
+                    boxShadow: AmeexDesign.shadowCard,
                   ),
                   child: Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.all(10),
+                        width: 42, height: 42,
                         decoration: BoxDecoration(
-                          color: isCancelledIndemnified ? const Color(0xFFFEF3C7) : const Color(0xFFDCFCE7),
-                          borderRadius: BorderRadius.circular(10),
+                          color: accent.withValues(alpha: 0.10),
+                          shape: BoxShape.circle,
                         ),
                         child: Icon(
-                          isCancelledIndemnified ? Icons.shield_rounded : Icons.done_all_rounded,
-                          color: isCancelledIndemnified ? const Color(0xFFD97706) : const Color(0xFF16A34A),
-                          size: 22,
+                          isCancelledIndemnified
+                              ? Icons.shield_outlined
+                              : Icons.check_rounded,
+                          color: accent,
+                          size: 20,
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -1970,31 +1998,49 @@ class DriverHistoryTab extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('$tracking • $customer', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                            const SizedBox(height: 2),
+                            Text(
+                              customer,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 14.5,
+                                letterSpacing: -0.2,
+                                color: AmeexColors.textDark,
+                              ),
+                            ),
+                            const SizedBox(height: 3),
                             Row(
                               children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFEFF5FF),
-                                    borderRadius: BorderRadius.circular(4),
+                                Text(
+                                  tracking,
+                                  style: const TextStyle(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w600,
+                                    color: AmeexColors.primaryBlue,
+                                    letterSpacing: 0.3,
                                   ),
-                                  child: Text(
-                                    'Colis: ${ParcelHelper.getParcelNumber(order)}',
-                                    style: const TextStyle(fontSize: 10, fontFamily: 'monospace', fontWeight: FontWeight.bold, color: AmeexColors.primaryBlue),
+                                ),
+                                const SizedBox(width: 6),
+                                Container(
+                                  width: 3, height: 3,
+                                  decoration: const BoxDecoration(
+                                    color: AmeexColors.textFaint,
+                                    shape: BoxShape.circle,
                                   ),
                                 ),
                                 const SizedBox(width: 6),
                                 Expanded(
                                   child: Text(
-                                    isCancelledIndemnified ? '$city (Annulé >50% indemnisé)' : city,
+                                    isCancelledIndemnified
+                                        ? '$city · Indemnisé'
+                                        : city,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      color: isCancelledIndemnified ? const Color(0xFFB45309) : const Color(0xFF64748B),
-                                      fontSize: 12,
-                                      fontWeight: isCancelledIndemnified ? FontWeight.bold : FontWeight.normal,
+                                    style: const TextStyle(
+                                      color: AmeexColors.textMuted,
+                                      fontSize: 12.5,
+                                      fontWeight: FontWeight.w500,
                                     ),
                                   ),
                                 ),
@@ -2003,9 +2049,33 @@ class DriverHistoryTab extends StatelessWidget {
                           ],
                         ),
                       ),
-                      Text(
-                        '+${driverFee.toStringAsFixed(2)} MAD',
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF16A34A)),
+                      const SizedBox(width: 8),
+                      RichText(
+                        textAlign: TextAlign.right,
+                        text: TextSpan(
+                          children: [
+                            TextSpan(
+                              text: '+${driverFee.toStringAsFixed(0)}',
+                              style: const TextStyle(
+                                fontFamily: AmeexTheme.fontFamily,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: -0.3,
+                                color: Color(0xFF10B981),
+                              ),
+                            ),
+                            const TextSpan(
+                              text: ' MAD',
+                              style: TextStyle(
+                                fontFamily: AmeexTheme.fontFamily,
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w600,
+                                color: AmeexColors.textFaint,
+                                letterSpacing: 0.3,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
@@ -2285,6 +2355,502 @@ class _DriverEarningsTabState extends State<DriverEarningsTab> {
     );
   }
 
+  /// Premium wallet card — bank-card style with embossed waves,
+  /// inline currency, two distinct CTAs.
+  Widget _buildWalletCard({
+    required BuildContext context,
+    required double available,
+    required double pending,
+    required int delivered,
+    required int compensated,
+    required double totalEarned,
+  }) {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFF17378C),
+            Color(0xFF14307A),
+            Color(0xFF071A4A),
+          ],
+          stops: [0.0, 0.55, 1.0],
+        ),
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF14307A).withValues(alpha: 0.10),
+            blurRadius: 2,
+            offset: const Offset(0, 1),
+          ),
+          BoxShadow(
+            color: const Color(0xFF14307A).withValues(alpha: 0.28),
+            blurRadius: 40,
+            offset: const Offset(0, 18),
+            spreadRadius: -10,
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          // Abstract decorative arcs (bank-card embossing feel)
+          Positioned.fill(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(22),
+              child: CustomPaint(
+                painter: _WalletArcPainter(),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(22),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Top row: brand + card type
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.account_balance_wallet_rounded,
+                          size: 16,
+                          color: Colors.white.withValues(alpha: 0.7),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Portefeuille Ameex',
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.75),
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0.1,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Text(
+                      'MAD',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.5),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.6,
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 28),
+
+                // Balance (inline currency — same weight)
+                Text(
+                  _fmtMoney(available),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 40,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -1.5,
+                    height: 1,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Container(
+                      width: 6, height: 6,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF4ADE80),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 7),
+                    Text(
+                      'Prêt à retirer',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.75),
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    if (pending > 0) ...[
+                      const SizedBox(width: 10),
+                      Container(
+                        width: 3, height: 3,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.35),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        '${_fmtMoney(pending)} en attente',
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.5),
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+
+                const SizedBox(height: 26),
+
+                // Actions row
+                Row(
+                  children: [
+                    Expanded(
+                      flex: 3,
+                      child: AmeexPressable(
+                        onTap: () => _showWithdrawDialog(context, available),
+                        child: Container(
+                          height: 46,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(13),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.north_east_rounded,
+                                  color: AmeexColors.primaryBlue, size: 17),
+                              const SizedBox(width: 7),
+                              Text(
+                                'Retirer',
+                                style: TextStyle(
+                                  color: AmeexColors.primaryBlue,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 14,
+                                  letterSpacing: -0.1,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      flex: 2,
+                      child: Container(
+                        height: 46,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.09),
+                          borderRadius: BorderRadius.circular(13),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.12),
+                            width: 1,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.receipt_long_outlined,
+                                color: Colors.white.withValues(alpha: 0.85),
+                                size: 16),
+                            const SizedBox(width: 7),
+                            Text(
+                              'Relevé',
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.85),
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 22),
+
+                // Fine divider
+                Container(
+                  height: 1,
+                  color: Colors.white.withValues(alpha: 0.08),
+                ),
+
+                const SizedBox(height: 14),
+
+                // Compact bottom metrics — inline, not boxed
+                Row(
+                  children: [
+                    Expanded(
+                      child: _walletMetric(
+                        label: 'Livrés',
+                        value: '$delivered',
+                      ),
+                    ),
+                    Expanded(
+                      child: _walletMetric(
+                        label: 'Indemnisés',
+                        value: '$compensated',
+                      ),
+                    ),
+                    Expanded(
+                      child: _walletMetric(
+                        label: 'Total gagné',
+                        value: _fmtMoney(totalEarned),
+                        isMoney: true,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _walletMetric({required String label, required String value, bool isMoney = false}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.5),
+            fontSize: 10.5,
+            fontWeight: FontWeight.w500,
+            letterSpacing: 0.2,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.3,
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Compact caisse row — restrained, horizontal, no loud visuals.
+  Widget _buildCaisseRow({
+    required bool needsRemittance,
+    required double amount,
+    required int unremittedCount,
+    required int totalDelivered,
+    required double pendingCommission,
+  }) {
+    final progress = totalDelivered == 0
+        ? 1.0
+        : ((totalDelivered - unremittedCount) / totalDelivered).clamp(0.0, 1.0);
+    final statusColor = needsRemittance
+        ? const Color(0xFFF59E0B)
+        : const Color(0xFF10B981);
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: AmeexDesign.shadowCard,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 36, height: 36,
+                decoration: BoxDecoration(
+                  color: statusColor.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(Icons.storefront_outlined,
+                    color: statusColor, size: 18),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Caisse agence',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14.5,
+                        letterSpacing: -0.2,
+                        color: AmeexColors.textDark,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      needsRemittance
+                          ? '$unremittedCount colis en attente'
+                          : 'Toutes les remises à jour',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AmeexColors.textMuted,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                needsRemittance ? _fmtMoney(amount) : '0',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.5,
+                  color: needsRemittance ? const Color(0xFFD97706) : AmeexColors.textDark,
+                ),
+              ),
+              const SizedBox(width: 3),
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Text(
+                  'MAD',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: AmeexColors.textFaint,
+                    letterSpacing: 0.3,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          // Thin progress strip
+          Stack(
+            children: [
+              Container(
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AmeexColors.surfaceAlt,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+              FractionallySizedBox(
+                widthFactor: progress,
+                child: Container(
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: statusColor,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '${(progress * 100).round()}% remis',
+                style: const TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w600,
+                  color: AmeexColors.textMuted,
+                ),
+              ),
+              if (needsRemittance && pendingCommission > 0)
+                Row(
+                  children: [
+                    Icon(Icons.lock_outline_rounded,
+                        size: 12, color: AmeexColors.textFaint),
+                    const SizedBox(width: 4),
+                    Text(
+                      '+${pendingCommission.toStringAsFixed(0)} MAD bloqués',
+                      style: const TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w600,
+                        color: AmeexColors.textFaint,
+                      ),
+                    ),
+                  ],
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _fmtMoney(double value) {
+    final s = value.toStringAsFixed(0);
+    final buf = StringBuffer();
+    for (int i = 0; i < s.length; i++) {
+      if (i > 0 && (s.length - i) % 3 == 0) buf.write(' ');
+      buf.write(s[i]);
+    }
+    return buf.toString();
+  }
+
+  Widget _buildCaisseFilterChip(String label, String value, int count, IconData icon) {
+    final isSelected = _ordersFilter == value;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(999),
+        onTap: () => setState(() => _ordersFilter = value),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOut,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: isSelected ? AmeexColors.primaryBlue : AmeexColors.surfaceAlt,
+            borderRadius: BorderRadius.circular(999),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                size: 14,
+                color: isSelected ? Colors.white : AmeexColors.textMuted,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  color: isSelected ? Colors.white : AmeexColors.textDark,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? Colors.white.withValues(alpha: 0.22)
+                      : Colors.white,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  '$count',
+                  style: TextStyle(
+                    color: isSelected ? Colors.white : AmeexColors.textMuted,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 11,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     const deepNavy = AmeexColors.primaryBlue;
@@ -2338,341 +2904,33 @@ class _DriverEarningsTabState extends State<DriverEarningsTab> {
             return true;
           }).toList();
 
+          final needsRemittance = balances.codToRemitToAgency > 0;
+          final totalDelivered = balances.deliveredCount + balances.compensatedCount;
           return SingleChildScrollView(
-            padding: const EdgeInsets.all(18),
+            padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
             child: AmeexFadeSlideIn(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // ==========================================================
-                  // EXPLANATION / WORKFLOW BANNER
-                  // ==========================================================
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(12),
-                    margin: const EdgeInsets.only(bottom: 16),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFEFF5FF),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFFBFDBFE)),
-                    ),
-                    child: const Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Icon(Icons.info_rounded, color: AmeexColors.primaryBlue, size: 20),
-                        SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            'Les espèces collectées auprès des clients (COD) appartiennent à l\'agence. Dès que vous remettez la caisse à l\'agence et que l\'admin la valide, votre commission de livraison est immédiatement débloquée pour le retrait.',
-                            style: TextStyle(fontSize: 12, color: Color(0xFF1E3A8A), height: 1.35),
-                          ),
-                        ),
-                      ],
-                    ),
+                  // =========== BANK-CARD STYLE WALLET ===========
+                  _buildWalletCard(
+                    context: context,
+                    available: balances.availableCommission,
+                    pending: balances.pendingCommission,
+                    delivered: balances.deliveredCount,
+                    compensated: balances.compensatedCount,
+                    totalEarned: balances.availableCommission + balances.pendingCommission,
                   ),
 
-                  // ==========================================================
-                  // 1. FLOSS L'AGENCE: CAISSE ESPÈCES À REMETTRE À L'AGENCE (COD)
-                  // ==========================================================
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: balances.codToRemitToAgency > 0 ? const Color(0xFFFFFBEB) : Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: balances.codToRemitToAgency > 0 ? const Color(0xFFF59E0B) : const Color(0xFFE2E8F0),
-                        width: balances.codToRemitToAgency > 0 ? 1.5 : 1.0,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: balances.codToRemitToAgency > 0
-                              ? const Color(0xFFF59E0B).withValues(alpha: 0.12)
-                              : Colors.black.withValues(alpha: 0.03),
-                          blurRadius: 10,
-                          offset: const Offset(0, 3),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: balances.codToRemitToAgency > 0 ? const Color(0xFFFEF3C7) : const Color(0xFFF1F5F9),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Icon(
-                                Icons.storefront_rounded,
-                                color: balances.codToRemitToAgency > 0 ? const Color(0xFFD97706) : const Color(0xFF64748B),
-                                size: 22,
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    '🏢 Caisse Agence Ameex (COD)',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 15,
-                                      color: Color(0xFF0F172A),
-                                    ),
-                                  ),
-                                  Text(
-                                    'Espèces clients encaissées à verser à l\'agence',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: balances.codToRemitToAgency > 0 ? const Color(0xFFB45309) : const Color(0xFF64748B),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: balances.codToRemitToAgency > 0 ? const Color(0xFFFEF3C7) : const Color(0xFFDCFCE7),
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(
-                                  color: balances.codToRemitToAgency > 0 ? const Color(0xFFFDE68A) : const Color(0xFF86EFAC),
-                                ),
-                              ),
-                              child: Text(
-                                balances.codToRemitToAgency > 0 ? 'À verser' : 'À jour',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
-                                  color: balances.codToRemitToAgency > 0 ? const Color(0xFFB45309) : const Color(0xFF16A34A),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 14),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.baseline,
-                          textBaseline: TextBaseline.alphabetic,
-                          children: [
-                            Text(
-                              '${balances.codToRemitToAgency.toStringAsFixed(2)} MAD',
-                              style: TextStyle(
-                                fontSize: 32,
-                                fontWeight: FontWeight.bold,
-                                color: balances.codToRemitToAgency > 0 ? const Color(0xFFD97706) : const Color(0xFF0F172A),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              '(${balances.unremittedCount} colis à verser)',
-                              style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 10),
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: balances.codToRemitToAgency > 0 ? const Color(0xFFFFF7ED) : const Color(0xFFF8FAFC),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                balances.codToRemitToAgency > 0 ? Icons.warning_amber_rounded : Icons.check_circle_outline_rounded,
-                                size: 16,
-                                color: balances.codToRemitToAgency > 0 ? const Color(0xFFC2410C) : const Color(0xFF16A34A),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  balances.codToRemitToAgency > 0
-                                      ? 'Remettez ces espèces à l\'agence Ameex. Dès confirmation par l\'admin, votre commission de +${balances.pendingCommission.toStringAsFixed(2)} MAD sera ajoutée à votre solde.'
-                                      : 'Super ! Toutes vos remises d\'espèces sont à jour. Total remis : ${balances.codRemittedToAgency.toStringAsFixed(2)} MAD.',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: balances.codToRemitToAgency > 0 ? const Color(0xFF9A3412) : const Color(0xFF166534),
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                  const SizedBox(height: 14),
 
-                  const SizedBox(height: 20),
-
-                  // ==========================================================
-                  // 2. REVENU DU LIVREUR (COMMISSIONS) & BOUTON RETIRER (WITHDRAW)
-                  // ==========================================================
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(22),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF0A192F), Color(0xFF1E3A8A)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(18),
-                      boxShadow: const [
-                        BoxShadow(color: Colors.black26, blurRadius: 12, offset: Offset(0, 5)),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Row(
-                              children: [
-                                Icon(Icons.wallet_rounded, color: Color(0xFF38BDF8), size: 20),
-                                SizedBox(width: 8),
-                                Text(
-                                  'Mon Revenu Net Disponible',
-                                  style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600),
-                                ),
-                              ],
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF10B981).withValues(alpha: 0.2),
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.5)),
-                              ),
-                              child: const Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  CircleAvatar(radius: 3, backgroundColor: Color(0xFF10B981)),
-                                  SizedBox(width: 5),
-                                  Text(
-                                    'Prêt pour retrait',
-                                    style: TextStyle(color: Color(0xFF34D399), fontSize: 10, fontWeight: FontWeight.bold),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-
-                        // ROW: SOLDE DISPONIBLE + BOUTON RETIRER (WITHDRAW)
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    '${balances.availableCommission.toStringAsFixed(2)} MAD',
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 32,
-                                      fontWeight: FontWeight.bold,
-                                      letterSpacing: -0.5,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  const Text(
-                                    'Rémunération personnelle validée',
-                                    style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
-                                  ),
-                                ],
-                              ),
-                            ),
-
-                            // BUTTON RETIRER (WITHDRAW)
-                            AmeexPressable(
-                              onTap: () => _showWithdrawDialog(context, balances.availableCommission),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF10B981),
-                                  borderRadius: BorderRadius.circular(12),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: const Color(0xFF10B981).withValues(alpha: 0.35),
-                                      blurRadius: 10,
-                                      offset: const Offset(0, 3),
-                                    ),
-                                  ],
-                                ),
-                                child: const Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(Icons.payments_rounded, color: Colors.white, size: 20),
-                                    SizedBox(width: 8),
-                                    Text(
-                                      'Retirer',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 14,
-                                        letterSpacing: 0.3,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-
-                        if (balances.pendingCommission > 0) ...[
-                          const SizedBox(height: 16),
-                          Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.08),
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(Icons.hourglass_top_rounded, color: Color(0xFFFDE047), size: 16),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    '+${balances.pendingCommission.toStringAsFixed(2)} MAD en attente (débloqués dès remise caisse à l\'agence)',
-                                    style: const TextStyle(color: Color(0xFFFEF08A), fontSize: 11, fontWeight: FontWeight.w600),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-
-                        const SizedBox(height: 16),
-                        const Divider(color: Colors.white12, height: 1),
-                        const SizedBox(height: 12),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'Colis livrés : ${balances.deliveredCount}',
-                              style: const TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.w600, fontSize: 12),
-                            ),
-                            Text(
-                              'Indemnisés (>50%) : ${balances.compensatedCount}',
-                              style: const TextStyle(color: Color(0xFFFDE047), fontWeight: FontWeight.w600, fontSize: 12),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
+                  // =========== COMPACT CAISSE ROW ===========
+                  _buildCaisseRow(
+                    needsRemittance: needsRemittance,
+                    amount: balances.codToRemitToAgency,
+                    unremittedCount: balances.unremittedCount,
+                    totalDelivered: totalDelivered,
+                    pendingCommission: balances.pendingCommission,
                   ),
 
                   const SizedBox(height: 20),
@@ -2703,48 +2961,56 @@ class _DriverEarningsTabState extends State<DriverEarningsTab> {
 
                   const SizedBox(height: 24),
 
-                  // ==========================================================
-                  // 4. HISTORIQUE DÉTAILLÉ DES COLIS & STATUT CAISSE
-                  // ==========================================================
+                  // =========== DETAIL + FILTERS ===========
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       const Text(
-                        'Détail des Colis & Statut Caisse',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                        'Détail des colis',
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -0.2,
+                          color: AmeexColors.textDark,
+                        ),
                       ),
                       Text(
-                        '${filteredOrders.length} colis',
-                        style: const TextStyle(fontSize: 12, color: Color(0xFF64748B), fontWeight: FontWeight.w600),
+                        '${filteredOrders.length}',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: AmeexColors.textFaint,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 12),
 
-                  // FILTER CHIPS
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
+                  // Clean premium filter pills (matches Orders tab)
+                  SizedBox(
+                    height: 36,
+                    child: ListView(
+                      scrollDirection: Axis.horizontal,
                       children: [
-                        ChoiceChip(
-                          label: const Text('Tous les colis', style: TextStyle(fontSize: 11)),
-                          selected: _ordersFilter == 'all',
-                          selectedColor: const Color(0xFFEFF5FF),
-                          onSelected: (val) => setState(() => _ordersFilter = 'all'),
+                        _buildCaisseFilterChip(
+                          'Tous',
+                          'all',
+                          balances.deliveredCount + balances.compensatedCount,
+                          Icons.inbox_outlined,
                         ),
                         const SizedBox(width: 8),
-                        ChoiceChip(
-                          label: Text('⏳ Caisse à verser (${balances.unremittedCount})', style: const TextStyle(fontSize: 11)),
-                          selected: _ordersFilter == 'pending_caisse',
-                          selectedColor: const Color(0xFFFEF3C7),
-                          onSelected: (val) => setState(() => _ordersFilter = 'pending_caisse'),
+                        _buildCaisseFilterChip(
+                          'À verser',
+                          'pending_caisse',
+                          balances.unremittedCount,
+                          Icons.schedule_rounded,
                         ),
                         const SizedBox(width: 8),
-                        ChoiceChip(
-                          label: Text('✅ Caisse Validée (${balances.deliveredCount - balances.unremittedCount})', style: const TextStyle(fontSize: 11)),
-                          selected: _ordersFilter == 'remitted',
-                          selectedColor: const Color(0xFFDCFCE7),
-                          onSelected: (val) => setState(() => _ordersFilter = 'remitted'),
+                        _buildCaisseFilterChip(
+                          'Validée',
+                          'remitted',
+                          balances.deliveredCount - balances.unremittedCount,
+                          Icons.check_circle_outline_rounded,
                         ),
                       ],
                     ),
@@ -2783,140 +3049,170 @@ class _DriverEarningsTabState extends State<DriverEarningsTab> {
                         final status = o['status'];
                         final isCompensated = status == 'cancelled';
 
+                        final statusColor = isCompensated
+                            ? const Color(0xFFF59E0B)
+                            : isRemitted
+                                ? const Color(0xFF10B981)
+                                : const Color(0xFFF59E0B);
+                        final statusLabel = isCompensated
+                            ? 'Indemnisé'
+                            : isRemitted
+                                ? 'Validée'
+                                : 'À verser';
+                        final isUnlocked = isRemitted || isCompensated;
+
                         return Container(
-                          padding: const EdgeInsets.all(14),
+                          margin: const EdgeInsets.only(bottom: 10),
+                          padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
                             color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: isRemitted || isCompensated ? const Color(0xFFE2E8F0) : const Color(0xFFFDE68A),
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.02),
-                                blurRadius: 6,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
+                            borderRadius: BorderRadius.circular(18),
+                            boxShadow: AmeexDesign.shadowCard,
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Row(
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xFFEFF5FF),
-                                          borderRadius: BorderRadius.circular(6),
-                                        ),
-                                        child: Text(
-                                          tracking,
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          customerName,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
                                           style: const TextStyle(
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.bold,
-                                            color: AmeexColors.primaryBlue,
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 14.5,
+                                            letterSpacing: -0.2,
+                                            color: AmeexColors.textDark,
                                           ),
                                         ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        customerName,
-                                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFF0F172A)),
-                                      ),
-                                    ],
+                                        const SizedBox(height: 3),
+                                        Text(
+                                          tracking,
+                                          style: const TextStyle(
+                                            fontSize: 11.5,
+                                            fontWeight: FontWeight.w600,
+                                            color: AmeexColors.primaryBlue,
+                                            letterSpacing: 0.3,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                   Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                                     decoration: BoxDecoration(
-                                      color: isCompensated
-                                          ? const Color(0xFFFEF3C7)
-                                          : isRemitted
-                                              ? const Color(0xFFDCFCE7)
-                                              : const Color(0xFFFFFBEB),
-                                      borderRadius: BorderRadius.circular(8),
-                                      border: Border.all(
-                                        color: isCompensated
-                                            ? const Color(0xFFFDE68A)
-                                            : isRemitted
-                                                ? const Color(0xFF86EFAC)
-                                                : const Color(0xFFFCD34D),
-                                      ),
+                                      color: statusColor.withValues(alpha: 0.10),
+                                      borderRadius: BorderRadius.circular(999),
                                     ),
-                                    child: Text(
-                                      isCompensated
-                                          ? 'Indemnisé (>50%)'
-                                          : isRemitted
-                                              ? '✅ Caisse validée'
-                                              : '⏳ Caisse à verser',
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold,
-                                        color: isCompensated
-                                            ? const Color(0xFFB45309)
-                                            : isRemitted
-                                                ? const Color(0xFF16A34A)
-                                                : const Color(0xFFD97706),
-                                      ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Container(
+                                          width: 6, height: 6,
+                                          decoration: BoxDecoration(
+                                            color: statusColor,
+                                            shape: BoxShape.circle,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          statusLabel,
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w600,
+                                            color: statusColor,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 10),
+                              const SizedBox(height: 14),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                padding: const EdgeInsets.all(12),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFF8FAFC),
-                                  borderRadius: BorderRadius.circular(8),
+                                  color: AmeexColors.surfaceAlt,
+                                  borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   children: [
-                                    Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        const Text('Caisse Encaissée (COD)', style: TextStyle(fontSize: 10, color: Color(0xFF64748B))),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          '${codAmount.toStringAsFixed(2)} MAD',
-                                          style: TextStyle(
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.bold,
-                                            color: isRemitted ? const Color(0xFF64748B) : const Color(0xFFD97706),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          const Text(
+                                            'COD encaissée',
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w500,
+                                              color: AmeexColors.textMuted,
+                                            ),
                                           ),
-                                        ),
-                                        Text(
-                                          isRemitted ? 'Remis à l\'agence' : 'Pour l\'agence Ameex',
-                                          style: const TextStyle(fontSize: 9, color: Color(0xFF94A3B8)),
-                                        ),
-                                      ],
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            '${codAmount.toStringAsFixed(0)} MAD',
+                                            style: const TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w700,
+                                              letterSpacing: -0.2,
+                                              color: AmeexColors.textDark,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
-                                    Container(height: 26, width: 1, color: const Color(0xFFE2E8F0)),
-                                    Column(
-                                      crossAxisAlignment: CrossAxisAlignment.end,
-                                      children: [
-                                        const Text('Votre Rémunération', style: TextStyle(fontSize: 10, color: Color(0xFF64748B))),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          '+${driverFee.toStringAsFixed(2)} MAD',
-                                          style: const TextStyle(
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.bold,
-                                            color: Color(0xFF10B981),
-                                          ),
+                                    Container(
+                                      width: 1, height: 28,
+                                      color: AmeexColors.divider,
+                                    ),
+                                    Expanded(
+                                      child: Padding(
+                                        padding: const EdgeInsets.only(left: 12),
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Row(
+                                              children: [
+                                                const Text(
+                                                  'Commission',
+                                                  style: TextStyle(
+                                                    fontSize: 11,
+                                                    fontWeight: FontWeight.w500,
+                                                    color: AmeexColors.textMuted,
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 4),
+                                                Icon(
+                                                  isUnlocked
+                                                      ? Icons.lock_open_rounded
+                                                      : Icons.lock_outline_rounded,
+                                                  size: 11,
+                                                  color: isUnlocked
+                                                      ? const Color(0xFF10B981)
+                                                      : AmeexColors.textFaint,
+                                                ),
+                                              ],
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              '+${driverFee.toStringAsFixed(0)} MAD',
+                                              style: TextStyle(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w700,
+                                                letterSpacing: -0.2,
+                                                color: isUnlocked
+                                                    ? const Color(0xFF10B981)
+                                                    : AmeexColors.textMuted,
+                                              ),
+                                            ),
+                                          ],
                                         ),
-                                        Text(
-                                          isRemitted || isCompensated ? 'Débloqué (Disponible)' : 'Bloqué (Attente caisse)',
-                                          style: TextStyle(
-                                            fontSize: 9,
-                                            fontWeight: FontWeight.w600,
-                                            color: isRemitted || isCompensated ? const Color(0xFF16A34A) : const Color(0xFFD97706),
-                                          ),
-                                        ),
-                                      ],
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -2936,6 +3232,38 @@ class _DriverEarningsTabState extends State<DriverEarningsTab> {
       ),
     );
   }
+}
+
+/// Soft embossed arcs on the dark wallet card (bank-card aesthetic).
+class _WalletArcPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0
+      ..color = Colors.white.withValues(alpha: 0.05);
+
+    // Two large concentric arcs anchored bottom-right
+    final center = Offset(size.width + 40, size.height + 20);
+    for (int i = 0; i < 3; i++) {
+      final r = 160.0 + i * 40;
+      canvas.drawCircle(center, r, paint);
+    }
+
+    // Subtle gradient highlight stripe
+    final paintLine = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.8
+      ..color = Colors.white.withValues(alpha: 0.03);
+    canvas.drawLine(
+      Offset(0, size.height * 0.35),
+      Offset(size.width, size.height * 0.25),
+      paintLine,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 // ============================================================================

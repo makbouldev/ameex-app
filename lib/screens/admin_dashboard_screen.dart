@@ -481,160 +481,133 @@ class _AdminDashboardHomeTabState extends State<AdminDashboardHomeTab> {
   }) {
     final rate = total == 0 ? 0 : ((delivered / total) * 100).round();
     return Container(
+      width: double.infinity,
       decoration: BoxDecoration(
-        gradient: AmeexDesign.heroGradient,
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFF17378C),
+            Color(0xFF14307A),
+            Color(0xFF071A4A),
+          ],
+          stops: [0.0, 0.55, 1.0],
+        ),
         borderRadius: BorderRadius.circular(22),
-        boxShadow: AmeexDesign.shadowHero,
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF14307A).withValues(alpha: 0.10),
+            blurRadius: 2,
+            offset: const Offset(0, 1),
+          ),
+          BoxShadow(
+            color: const Color(0xFF14307A).withValues(alpha: 0.28),
+            blurRadius: 40,
+            offset: const Offset(0, 18),
+            spreadRadius: -10,
+          ),
+        ],
       ),
       child: Stack(
         children: [
-          // Decorative concentric circles (subtle)
-          Positioned(
-            top: -40,
-            right: -30,
-            child: _heroGlow(160, Colors.white.withValues(alpha: 0.06)),
-          ),
-          Positioned(
-            bottom: -50,
-            right: 40,
-            child: _heroGlow(120, Colors.white.withValues(alpha: 0.04)),
+          Positioned.fill(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(22),
+              child: CustomPaint(painter: _HeroArcPainter()),
+            ),
           ),
           Padding(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(22),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Top row — label + live indicator
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.trending_up_rounded,
+                          size: 16,
+                          color: Colors.white.withValues(alpha: 0.7),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Revenus encaissés',
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.75),
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0.1,
+                          ),
+                        ),
+                      ],
+                    ),
                     Text(
-                      'REVENUS ENCAISSÉS',
+                      'MAD',
                       style: TextStyle(
-                        fontSize: 10.5,
+                        color: Colors.white.withValues(alpha: 0.5),
+                        fontSize: 11,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 1.6,
-                        color: Colors.white.withValues(alpha: 0.6),
                       ),
                     ),
+                  ],
+                ),
+
+                const SizedBox(height: 28),
+
+                Text(
+                  _formatMoney(revenue),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 40,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -1.5,
+                    height: 1,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 6, height: 6,
-                            decoration: const BoxDecoration(
-                              color: Color(0xFF34D399),
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            'LIVE',
-                            style: TextStyle(
-                              fontSize: 9.5,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 1.2,
-                              color: Colors.white.withValues(alpha: 0.95),
-                            ),
-                          ),
-                        ],
+                      width: 6, height: 6,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF4ADE80),
+                        shape: BoxShape.circle,
                       ),
                     ),
-                  ],
-                ),
-
-                const SizedBox(height: 12),
-
-                // Hero number
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
+                    const SizedBox(width: 7),
                     Text(
-                      _formatMoney(revenue),
-                      style: const TextStyle(
-                        fontSize: 36,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: -1.5,
-                        color: Colors.white,
-                        height: 1.0,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 5),
-                      child: Text(
-                        'MAD',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white.withValues(alpha: 0.55),
-                          letterSpacing: 0.3,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    Icon(Icons.trending_up_rounded,
-                        size: 14, color: const Color(0xFF34D399).withValues(alpha: 0.9)),
-                    const SizedBox(width: 4),
-                    Text(
-                      '$rate% taux de livraison',
+                      '$rate% de livraisons réussies',
                       style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.75),
                         fontSize: 12.5,
                         fontWeight: FontWeight.w500,
-                        color: Colors.white.withValues(alpha: 0.7),
                       ),
                     ),
                   ],
                 ),
 
-                const SizedBox(height: 18),
+                const SizedBox(height: 22),
 
-                // Divider
                 Container(
                   height: 1,
-                  color: Colors.white.withValues(alpha: 0.10),
+                  color: Colors.white.withValues(alpha: 0.08),
                 ),
 
                 const SizedBox(height: 14),
 
-                // Inline sub-metrics
                 Row(
                   children: [
                     Expanded(
-                      child: _heroMetric(
-                        label: 'Total',
-                        value: total.toString(),
-                      ),
-                    ),
-                    Container(
-                      width: 1, height: 28,
-                      color: Colors.white.withValues(alpha: 0.10),
+                      child: _heroMetric(label: 'Total', value: '$total'),
                     ),
                     Expanded(
-                      child: _heroMetric(
-                        label: 'En transit',
-                        value: inTransit.toString(),
-                      ),
-                    ),
-                    Container(
-                      width: 1, height: 28,
-                      color: Colors.white.withValues(alpha: 0.10),
+                      child: _heroMetric(label: 'En transit', value: '$inTransit'),
                     ),
                     Expanded(
-                      child: _heroMetric(
-                        label: 'Livré',
-                        value: delivered.toString(),
-                      ),
+                      child: _heroMetric(label: 'Livré', value: '$delivered'),
                     ),
                   ],
                 ),
@@ -661,26 +634,25 @@ class _AdminDashboardHomeTabState extends State<AdminDashboardHomeTab> {
 
   Widget _heroMetric({required String label, required String value}) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-            letterSpacing: -0.4,
-            color: Colors.white,
-            height: 1.1,
-          ),
-        ),
-        const SizedBox(height: 3),
         Text(
           label,
           style: TextStyle(
-            fontSize: 11,
+            color: Colors.white.withValues(alpha: 0.5),
+            fontSize: 10.5,
             fontWeight: FontWeight.w500,
-            color: Colors.white.withValues(alpha: 0.6),
             letterSpacing: 0.2,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.3,
           ),
         ),
       ],
@@ -2692,6 +2664,36 @@ class AdminProfileTab extends StatelessWidget {
       }
     }
   }
+}
+
+/// Soft embossed arcs on the dark hero card (bank-card aesthetic).
+class _HeroArcPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0
+      ..color = Colors.white.withValues(alpha: 0.05);
+
+    final center = Offset(size.width + 40, size.height + 20);
+    for (int i = 0; i < 3; i++) {
+      final r = 160.0 + i * 40;
+      canvas.drawCircle(center, r, paint);
+    }
+
+    final paintLine = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.8
+      ..color = Colors.white.withValues(alpha: 0.03);
+    canvas.drawLine(
+      Offset(0, size.height * 0.35),
+      Offset(size.width, size.height * 0.25),
+      paintLine,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 // ============================================================================

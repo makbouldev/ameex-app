@@ -1,19 +1,6 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <!--
-    If you are serving your web app in a path other than the root, change the
-    href value below to reflect the base path you are serving from.
-
-    The path provided below has to start and end with a slash "/" in order for
-    it to work correctly.
-
-    For more details:
-    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
-
-    This is a placeholder for base href that will be replaced by the value of
-    the `--base-href` argument provided to `flutter build`.
-  -->
   <base href="$FLUTTER_BASE_HREF">
 
   <meta charset="UTF-8">
@@ -31,16 +18,115 @@
 
   <title>Ameex • Logistics Suite</title>
   <link rel="manifest" href="manifest.json">
+
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      background-color: #F7F8FA;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Branded splash — matches AmeexSplash in the Flutter app */
+    #ameex-splash {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      background-color: #F7F8FA;
+      z-index: 999999;
+      transition: opacity 0.4s ease-out;
+    }
+
+    #ameex-splash.fade-out {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .ameex-pulse-wrap {
+      position: relative;
+      width: 120px;
+      height: 120px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .ameex-ring {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      border-radius: 50%;
+      border: 1.4px solid rgba(20, 48, 122, 0.45);
+      transform: translate(-50%, -50%);
+      animation: ameex-ring-anim 2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    }
+    .ameex-ring.r2 { animation-delay: 1s; }
+
+    @keyframes ameex-ring-anim {
+      0%   { width: 44px;  height: 44px;  opacity: 0.45; }
+      100% { width: 116px; height: 116px; opacity: 0;    }
+    }
+
+    .ameex-core {
+      position: relative;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #1E3A8A 0%, #14307A 55%, #04205F 100%);
+      box-shadow: 0 1px 2px rgba(20, 48, 122, 0.10),
+                  0 20px 40px -12px rgba(20, 48, 122, 0.30);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: ameex-core-breath 2s ease-in-out infinite;
+    }
+
+    @keyframes ameex-core-breath {
+      0%, 100% { transform: scale(0.92); }
+      50%      { transform: scale(1.0); }
+    }
+
+    .ameex-core-dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.9);
+    }
+
+    .ameex-label {
+      margin-top: 28px;
+      font-size: 13.5px;
+      font-weight: 500;
+      color: #6B7280;
+      letter-spacing: 0.3px;
+    }
+  </style>
 </head>
 <body>
-  <!--
-    You can customize the "flutter_bootstrap.js" script.
-    This is useful to provide a custom configuration to the Flutter loader
-    or to give the user feedback during the initialization process.
+  <div id="ameex-splash">
+    <div class="ameex-pulse-wrap">
+      <div class="ameex-ring r1"></div>
+      <div class="ameex-ring r2"></div>
+      <div class="ameex-core">
+        <div class="ameex-core-dot"></div>
+      </div>
+    </div>
+    <div class="ameex-label">Chargement…</div>
+  </div>
 
-    For more details:
-    * https://docs.flutter.dev/platform-integration/web/initialization
-  -->
+  <script>
+    window.addEventListener('flutter-first-frame', function () {
+      var el = document.getElementById('ameex-splash');
+      if (!el) return;
+      el.classList.add('fade-out');
+      setTimeout(function () { el.remove(); }, 450);
+    });
+  </script>
+
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>
