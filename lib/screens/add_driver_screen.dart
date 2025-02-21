@@ -44,9 +44,12 @@ class _AddDriverScreenState extends State<AddDriverScreen> {
     'Casablanca - Sidi Maarouf & Californie',
     'Casablanca - Centre Ville & Port',
     'Casablanca - Ain Sebaa & Bernoussi',
-    'Rabat - Agdal & Hassan',
-    'Marrakech - Guéliz & Médina',
-    'Tanger - Malabata & Centre',
+    'Casablanca - Bourgogne & Ain Diab',
+    'Casablanca - Hay Hassani & Oulfa',
+    'Casablanca - Mers Sultan & 2 Mars',
+    'Casablanca - Hay Mohammadi & Roches Noires',
+    'Casablanca - Sbata, Ben M\'sick & Moulay Rachid',
+    'Casablanca - Bouskoura & Errahma',
   ];
 
   @override
@@ -121,66 +124,55 @@ class _AddDriverScreenState extends State<AddDriverScreen> {
     final email = _emailController.text.trim();
     final password = _passwordController.text;
     final phone = _phoneController.text.trim();
-    final effectiveAvatarUrl = _selectedAvatarUrl.isNotEmpty
+    // Use clean HTTP avatar URL or preset so zone/payload never contains bulky base64 data
+    final cleanAvatarUrl = (_selectedAvatarUrl.isNotEmpty && !_selectedAvatarUrl.startsWith('data:image'))
         ? _selectedAvatarUrl
         : DriverAvatarHelper.getAvatarUrl(null, defaultName: fullName);
-    final zoneWithAvatar = DriverAvatarHelper.formatWithAvatar(_selectedZone, effectiveAvatarUrl);
+    final zoneWithAvatar = DriverAvatarHelper.formatWithAvatar(_selectedZone, cleanAvatarUrl);
 
     try {
-      // 1. Try via RPC function
-      try {
-        await supabase.rpc('create_driver_account', params: {
-          'p_email': email,
-          'p_password': password,
-          'p_full_name': fullName,
-          'p_phone': phone,
-          'p_vehicle_type': _selectedVehicle,
-          'p_zone': zoneWithAvatar,
-        });
-      } catch (rpcError) {
-        // Fallback: Use isolated client to register user so admin session is untouched
-        // and header/cookie limits are never exceeded by auth metadata.
-        final tempClient = SupabaseClient(
-          'https://mgnanilybghwxnppwsnc.supabase.co',
-          'sb_publishable_GG9AAryfHTt6M_7gL0fpCw_05KJClnp',
-          authOptions: const AuthClientOptions(authFlowType: AuthFlowType.implicit),
-        );
+      // Create driver user via isolated client so Admin session is untouched
+      final tempClient = SupabaseClient(
+        'https://mgnanilybghwxnppwsnc.supabase.co',
+        'sb_publishable_GG9AAryfHTt6M_7gL0fpCw_05KJClnp',
+        authOptions: const AuthClientOptions(authFlowType: AuthFlowType.implicit),
+      );
 
-        final res = await tempClient.auth.signUp(
-          email: email,
-          password: password,
-          data: {
+      final res = await tempClient.auth.signUp(
+        email: email,
+        password: password,
+        data: {
+          'full_name': fullName,
+          'role': 'driver',
+          'phone': phone,
+          'vehicle_type': _selectedVehicle,
+          'zone': _selectedZone,
+        },
+      );
+
+      if (res.user != null) {
+        try {
+          await supabase.from('profiles').upsert({
+            'id': res.user!.id,
             'full_name': fullName,
-            'role': 'driver',
             'phone': phone,
+            'role': 'driver',
             'vehicle_type': _selectedVehicle,
-            'zone': _selectedZone,
-          },
-        );
-
-        if (res.user != null) {
-          try {
-            await supabase.from('profiles').upsert({
-              'id': res.user!.id,
-              'full_name': fullName,
-              'phone': phone,
-              'role': 'driver',
-              'vehicle_type': _selectedVehicle,
-              'zone': zoneWithAvatar,
-              'avatar_url': effectiveAvatarUrl,
-            });
-          } catch (_) {
-            // If avatar_url column does not exist on profiles, zone has [AVATAR:...] tag
-            await supabase.from('profiles').upsert({
-              'id': res.user!.id,
-              'full_name': fullName,
-              'phone': phone,
-              'role': 'driver',
-              'vehicle_type': _selectedVehicle,
-              'zone': zoneWithAvatar,
-            });
-          }
+            'zone': zoneWithAvatar,
+            'avatar_url': cleanAvatarUrl,
+          });
+        } catch (_) {
+          await supabase.from('profiles').upsert({
+            'id': res.user!.id,
+            'full_name': fullName,
+            'phone': phone,
+            'role': 'driver',
+            'vehicle_type': _selectedVehicle,
+            'zone': zoneWithAvatar,
+          });
         }
+      } else {
+        throw Exception('Impossible d\'enregistrer le compte du livreur.');
       }
 
       if (!mounted) return;
