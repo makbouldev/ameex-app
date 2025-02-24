@@ -17,7 +17,8 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
   final _formKey = GlobalKey<FormState>();
   final supabase = Supabase.instance.client;
 
-  String _deliveryType = 'Standard';
+  String _selectedVehicle = 'Moto';
+  String _selectedZone = 'Toutes les zones';
   final _customerNameController = TextEditingController();
   final _customerPhoneController = TextEditingController(text: '06');
   final _trackingNumberController = TextEditingController();
@@ -26,21 +27,33 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
   final _amountController = TextEditingController(text: '150');
   final _driverFeeController = TextEditingController(text: '25'); // Gain du livreur
   
-  String _selectedCity = 'Casablanca';
+  final String _selectedCity = 'Casablanca';
   String? _selectedDriverId;
   List<Map<String, dynamic>> _drivers = [];
 
   bool _isLoadingDrivers = true;
   bool _isSubmitting = false;
 
-  final List<String> _deliveryTypes = ['Standard', 'Express', 'Même jour (Urgent)'];
-  final List<String> _cities = [
-    'Casablanca',
-    'Rabat',
-    'Marrakech',
-    'Tanger',
-    'Fès',
-    'Agadir',
+  final List<Map<String, dynamic>> _vehicleOptions = [
+    {'name': 'Tous', 'label': 'Tous', 'icon': Icons.all_inclusive_rounded},
+    {'name': 'Moto', 'label': 'Moto', 'icon': Icons.two_wheeler_rounded},
+    {'name': 'Vélo', 'label': 'Vélo', 'icon': Icons.pedal_bike_rounded},
+    {'name': 'Voiture', 'label': 'Voiture', 'icon': Icons.directions_car_rounded},
+    {'name': 'Fourgonnette', 'label': 'Van', 'icon': Icons.local_shipping_rounded},
+  ];
+
+  final List<String> _casablancaZones = [
+    'Toutes les zones',
+    'Casablanca - Maarif & Anfa',
+    'Casablanca - Sidi Maarouf & Californie',
+    'Casablanca - Centre Ville & Port',
+    'Casablanca - Ain Sebaa & Bernoussi',
+    'Casablanca - Bourgogne & Ain Diab',
+    'Casablanca - Hay Hassani & Oulfa',
+    'Casablanca - Mers Sultan & 2 Mars',
+    'Casablanca - Hay Mohammadi & Roches Noires',
+    'Casablanca - Sbata, Ben M\'sick & Moulay Rachid',
+    'Casablanca - Bouskoura & Errahma',
   ];
 
   @override
@@ -69,20 +82,71 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
     try {
       final data = await supabase
           .from('profiles')
-          .select('id, full_name, phone')
+          .select('id, full_name, phone, vehicle_type, zone, avatar_url, role')
           .eq('role', 'driver');
 
       if (mounted) {
         setState(() {
           _drivers = List<Map<String, dynamic>>.from(data);
-          if (_drivers.isNotEmpty) {
-            _selectedDriverId = _drivers.first['id'] as String;
-          }
+          _syncSelectedDriverWithFilter();
           _isLoadingDrivers = false;
         });
       }
     } catch (_) {
       if (mounted) setState(() => _isLoadingDrivers = false);
+    }
+  }
+
+  List<Map<String, dynamic>> get _filteredDrivers {
+    return _drivers.where((driver) {
+      // 1. Vehicle filter
+      if (_selectedVehicle != 'Tous') {
+        final v = DriverAvatarHelper.cleanVehicle(driver['vehicle_type']).toLowerCase();
+        final target = _selectedVehicle.toLowerCase();
+        bool match = false;
+        if (target.contains('moto') && v.contains('moto')) {
+          match = true;
+        } else if ((target.contains('vélo') || target.contains('velo')) &&
+            (v.contains('vélo') || v.contains('velo') || v.contains('bike'))) {
+          match = true;
+        } else if (target.contains('voiture') && (v.contains('voiture') || v.contains('car'))) {
+          match = true;
+        } else if (target.contains('fourgon') && (v.contains('fourgon') || v.contains('van'))) {
+          match = true;
+        } else if (v.contains(target) || target.contains(v)) {
+          match = true;
+        }
+        if (!match) return false;
+      }
+
+      // 2. Zone filter
+      if (_selectedZone != 'Toutes les zones') {
+        final z = DriverAvatarHelper.cleanZone(driver['zone']).toLowerCase();
+        final targetZone = _selectedZone.toLowerCase();
+        if (!z.contains(targetZone) && !targetZone.contains(z)) {
+          final parts = targetZone.replaceFirst('casablanca -', '').split('&');
+          bool partMatch = false;
+          for (final p in parts) {
+            final cp = p.trim();
+            if (cp.isNotEmpty && z.contains(cp)) {
+              partMatch = true;
+              break;
+            }
+          }
+          if (!partMatch) return false;
+        }
+      }
+
+      return true;
+    }).toList();
+  }
+
+  void _syncSelectedDriverWithFilter() {
+    final filtered = _filteredDrivers;
+    if (_selectedDriverId != null && !filtered.any((d) => d['id'] == _selectedDriverId)) {
+      _selectedDriverId = filtered.isNotEmpty ? (filtered.first['id'] as String) : null;
+    } else if (_selectedDriverId == null && filtered.isNotEmpty) {
+      _selectedDriverId = filtered.first['id'] as String;
     }
   }
 
@@ -98,8 +162,9 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
           ? _parcelNumberController.text.trim()
           : _generateParcelNumber();
 
+      final effectiveCity = _selectedZone != 'Toutes les zones' ? _selectedZone : _selectedCity;
       final String rawAddress = _addressController.text.trim().isEmpty 
-          ? '$_selectedCity Centre' 
+          ? '$effectiveCity Centre' 
           : _addressController.text.trim();
       final String addressWithParcel = ParcelHelper.formatWithParcel(rawAddress, parcelNumber);
 
@@ -107,7 +172,7 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
         'tracking_number': _trackingNumberController.text.trim(),
         'customer_name': _customerNameController.text.trim(),
         'customer_phone': _customerPhoneController.text.trim(),
-        'destination_city': _selectedCity,
+        'destination_city': effectiveCity,
         'delivery_address': addressWithParcel,
         'amount': amount,
         'status': 'pending',
@@ -118,7 +183,7 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
       try {
         await supabase.from('orders').insert({
           ...insertPayload,
-          'delivery_type': _deliveryType,
+          'delivery_type': _selectedVehicle,
           'driver_fee': driverFee,
           'parcel_number': parcelNumber,
         });
@@ -126,14 +191,14 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
         try {
           await supabase.from('orders').insert({
             ...insertPayload,
-            'delivery_type': _deliveryType,
+            'delivery_type': _selectedVehicle,
             'driver_fee': driverFee,
           });
         } catch (_) {
           // Fallback in case SQL columns delivery_type/driver_fee not yet added
           await supabase.from('orders').insert({
             ...insertPayload,
-            'delivery_address': '$addressWithParcel [Type: $_deliveryType | Gain: ${driverFee} MAD]',
+            'delivery_address': '$addressWithParcel [Véhicule: $_selectedVehicle | Zone: $_selectedZone | Gain: $driverFee MAD]',
           });
         }
       }
@@ -211,25 +276,141 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 1. Type de livraison
-              _buildLabel('Type de livraison'),
+              // 1. Type de véhicule requis (remplace Type de livraison)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _buildLabel('Type de véhicule requis'),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2.5),
+                    decoration: BoxDecoration(
+                      color: AmeexColors.primaryBlue.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: AmeexColors.primaryBlue.withValues(alpha: 0.2)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: const [
+                        Icon(Icons.filter_alt_rounded, size: 12, color: AmeexColors.primaryBlue),
+                        SizedBox(width: 4),
+                        Text(
+                          'Filtre automatique',
+                          style: TextStyle(color: AmeexColors.primaryBlue, fontSize: 10, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: _vehicleOptions.map((v) {
+                  final isSelected = _selectedVehicle == v['name'];
+                  return Expanded(
+                    child: GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _selectedVehicle = v['name'] as String;
+                          _syncSelectedDriverWithFilter();
+                        });
+                      },
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 180),
+                        margin: const EdgeInsets.symmetric(horizontal: 2.5),
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        decoration: BoxDecoration(
+                          color: isSelected ? AmeexColors.primaryBlue : Colors.white,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: isSelected ? AmeexColors.primaryBlue : const Color(0xFFE2E8F0),
+                            width: isSelected ? 1.5 : 1.0,
+                          ),
+                          boxShadow: isSelected
+                              ? [
+                                  BoxShadow(
+                                    color: AmeexColors.primaryBlue.withValues(alpha: 0.22),
+                                    blurRadius: 5,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ]
+                              : null,
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              v['icon'] as IconData,
+                              color: isSelected ? Colors.white : const Color(0xFF64748B),
+                              size: 20,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              v['label'] as String,
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: isSelected ? Colors.white : const Color(0xFF475569),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+
+              const SizedBox(height: 16),
+
+              // 1. bis Zone de livraison (Casablanca)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _buildLabel('Zone d\'affectation (Casablanca)'),
+                  Text(
+                    'Filtre par zone',
+                    style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                  ),
+                ],
+              ),
               const SizedBox(height: 6),
               Container(
                 decoration: _fieldBoxDecoration(),
                 padding: const EdgeInsets.symmetric(horizontal: 14),
                 child: DropdownButtonHideUnderline(
                   child: DropdownButton<String>(
-                    value: _deliveryType,
+                    value: _selectedZone,
                     isExpanded: true,
                     icon: const Icon(Icons.keyboard_arrow_down, color: Colors.black54),
-                    items: _deliveryTypes.map((type) {
+                    items: _casablancaZones.map((zone) {
                       return DropdownMenuItem(
-                        value: type,
-                        child: Text(type, style: const TextStyle(fontSize: 14, color: Color(0xFF0F172A))),
+                        value: zone,
+                        child: Row(
+                          children: [
+                            Icon(
+                              zone == 'Toutes les zones' ? Icons.map_rounded : Icons.location_on_rounded,
+                              size: 16,
+                              color: zone == 'Toutes les zones' ? Colors.grey : AmeexColors.primaryBlue,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                zone,
+                                style: const TextStyle(fontSize: 13, color: Color(0xFF0F172A), fontWeight: FontWeight.w500),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
                       );
                     }).toList(),
                     onChanged: (val) {
-                      if (val != null) setState(() => _deliveryType = val);
+                      if (val != null) {
+                        setState(() {
+                          _selectedZone = val;
+                          _syncSelectedDriverWithFilter();
+                        });
+                      }
                     },
                   ),
                 ),
@@ -412,28 +593,49 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
 
               const SizedBox(height: 16),
 
-              // 5. Ville de destination
-              _buildLabel('Ville de destination'),
-              const SizedBox(height: 6),
-              Container(
-                decoration: _fieldBoxDecoration(),
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    value: _selectedCity,
-                    isExpanded: true,
-                    icon: const Icon(Icons.keyboard_arrow_down, color: Colors.black54),
-                    items: _cities.map((city) {
-                      return DropdownMenuItem(
-                        value: city,
-                        child: Text(city, style: const TextStyle(fontSize: 14, color: Color(0xFF0F172A))),
-                      );
-                    }).toList(),
-                    onChanged: (val) {
-                      if (val != null) setState(() => _selectedCity = val);
-                    },
+              // 5. Ville & Zone de destination
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildLabel('Ville'),
+                        const SizedBox(height: 6),
+                        Container(
+                          decoration: _fieldBoxDecoration(),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                          child: const Row(
+                            children: [
+                              Icon(Icons.location_city_rounded, size: 18, color: AmeexColors.primaryBlue),
+                              SizedBox(width: 8),
+                              Text('Casablanca', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildLabel('Zone sélectionnée'),
+                        const SizedBox(height: 6),
+                        Container(
+                          decoration: _fieldBoxDecoration(),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                          child: Text(
+                            _selectedZone == 'Toutes les zones' ? 'Grand Casablanca' : _selectedZone.replaceFirst('Casablanca - ', ''),
+                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AmeexColors.primaryBlue),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
 
               const SizedBox(height: 16),
@@ -453,8 +655,33 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
 
               const SizedBox(height: 16),
 
-              // 7. Livreur assigné
-              _buildLabel('Livreur assigné'),
+              // 7. Livreur assigné (Filtré dynamiquement)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _buildLabel('Livreur assigné'),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: _filteredDrivers.isEmpty ? const Color(0xFFFEE2E2) : const Color(0xFFDCFCE7),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: _filteredDrivers.isEmpty ? const Color(0xFFFCA5A5) : const Color(0xFF86EFAC),
+                      ),
+                    ),
+                    child: Text(
+                      _filteredDrivers.isEmpty
+                          ? '0 livreur correspondant'
+                          : '${_filteredDrivers.length} livreur(s) disponible(s)',
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.bold,
+                        color: _filteredDrivers.isEmpty ? const Color(0xFFB91C1C) : const Color(0xFF15803D),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
               const SizedBox(height: 6),
               _isLoadingDrivers
                   ? const LinearProgressIndicator(color: navyColor)
@@ -486,7 +713,7 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
                                     ],
                                   ),
                                 ),
-                                ..._drivers.map((driver) {
+                                ..._filteredDrivers.map((driver) {
                                   final name = driver['full_name'] ?? 'Livreur';
                                   final vehicle = DriverAvatarHelper.cleanVehicle(driver['vehicle_type']);
                                   final zone = DriverAvatarHelper.cleanZone(driver['zone']);
@@ -531,6 +758,30 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
                             ),
                           ),
                         ),
+
+                        if (_filteredDrivers.isEmpty) ...[
+                          const SizedBox(height: 8),
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFFFBEB),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: const Color(0xFFFDE68A)),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.info_outline_rounded, color: Color(0xFFD97706), size: 18),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'Aucun livreur avec le véhicule "$_selectedVehicle" dans cette zone. Vous pouvez choisir "Tous" ou enregistrer la commande sans livreur.',
+                                    style: const TextStyle(fontSize: 11.5, color: Color(0xFF92400E)),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
 
                         // Selected Driver Preview Card
                         if (_selectedDriverId != null) ...[
