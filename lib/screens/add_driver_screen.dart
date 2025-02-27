@@ -24,7 +24,7 @@ class _AddDriverScreenState extends State<AddDriverScreen> {
   final _phoneController = TextEditingController(text: '06');
 
   String _selectedVehicle = 'Moto / Scooter';
-  String _selectedZone = 'Casablanca - Maarif & Anfa';
+  String _selectedCity = 'Casablanca';
   String _selectedAvatarUrl = '';
   Uint8List? _selectedImageBytes;
   String? _selectedImageName;
@@ -39,17 +39,22 @@ class _AddDriverScreenState extends State<AddDriverScreen> {
     {'name': 'Fourgonnette (Van)', 'icon': Icons.local_shipping_rounded},
   ];
 
-  final List<String> _zones = [
-    'Casablanca - Maarif & Anfa',
-    'Casablanca - Sidi Maarouf & Californie',
-    'Casablanca - Centre Ville & Port',
-    'Casablanca - Ain Sebaa & Bernoussi',
-    'Casablanca - Bourgogne & Ain Diab',
-    'Casablanca - Hay Hassani & Oulfa',
-    'Casablanca - Mers Sultan & 2 Mars',
-    'Casablanca - Hay Mohammadi & Roches Noires',
-    'Casablanca - Sbata, Ben M\'sick & Moulay Rachid',
-    'Casablanca - Bouskoura & Errahma',
+  final List<String> _cities = [
+    'Casablanca',
+    'Rabat',
+    'Marrakech',
+    'Tanger',
+    'Fès',
+    'Agadir',
+    'Meknès',
+    'Oujda',
+    'Kénitra',
+    'Tétouan',
+    'Salé',
+    'Mohammedia',
+    'El Jadida',
+    'Nador',
+    'Béni Mellal',
   ];
 
   @override
@@ -124,11 +129,11 @@ class _AddDriverScreenState extends State<AddDriverScreen> {
     final email = _emailController.text.trim();
     final password = _passwordController.text;
     final phone = _phoneController.text.trim();
-    // Use clean HTTP avatar URL or preset so zone/payload never contains bulky base64 data
+    // Use clean HTTP avatar URL or preset so city/payload never contains bulky base64 data
     final cleanAvatarUrl = (_selectedAvatarUrl.isNotEmpty && !_selectedAvatarUrl.startsWith('data:image'))
         ? _selectedAvatarUrl
         : DriverAvatarHelper.getAvatarUrl(null, defaultName: fullName);
-    final zoneWithAvatar = DriverAvatarHelper.formatWithAvatar(_selectedZone, cleanAvatarUrl);
+    final cityWithAvatar = DriverAvatarHelper.formatWithAvatar(_selectedCity, cleanAvatarUrl);
 
     try {
       // Create driver user via isolated client so Admin session is untouched
@@ -146,7 +151,7 @@ class _AddDriverScreenState extends State<AddDriverScreen> {
           'role': 'driver',
           'phone': phone,
           'vehicle_type': _selectedVehicle,
-          'zone': _selectedZone,
+          'zone': _selectedCity,
         },
       );
 
@@ -158,7 +163,7 @@ class _AddDriverScreenState extends State<AddDriverScreen> {
             'phone': phone,
             'role': 'driver',
             'vehicle_type': _selectedVehicle,
-            'zone': zoneWithAvatar,
+            'zone': cityWithAvatar,
             'avatar_url': cleanAvatarUrl,
           });
         } catch (_) {
@@ -168,7 +173,7 @@ class _AddDriverScreenState extends State<AddDriverScreen> {
             'phone': phone,
             'role': 'driver',
             'vehicle_type': _selectedVehicle,
-            'zone': zoneWithAvatar,
+            'zone': cityWithAvatar,
           });
         }
       } else {
@@ -228,7 +233,7 @@ class _AddDriverScreenState extends State<AddDriverScreen> {
                     const SizedBox(height: 4),
                     Text('Véhicule : $_selectedVehicle', style: const TextStyle(fontSize: 12, color: Color(0xFF475569))),
                     const SizedBox(height: 2),
-                    Text('Zone : $_selectedZone', style: const TextStyle(fontSize: 12, color: Color(0xFF475569))),
+                    Text('Ville : $_selectedCity', style: const TextStyle(fontSize: 12, color: Color(0xFF475569))),
                   ],
                 ),
               ),
@@ -640,25 +645,37 @@ class _AddDriverScreenState extends State<AddDriverScreen> {
 
               const SizedBox(height: 16),
 
-              // 5. Zone d'affectation
-              _buildLabel('Zone d\'affectation principale'),
+              // 5. Ville d'affectation (Ville de travail)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _buildLabel('Ville d\'affectation principale'),
+                  Text('Zone de travail', style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
+                ],
+              ),
               const SizedBox(height: 6),
               Container(
                 decoration: _fieldBoxDecoration(),
                 padding: const EdgeInsets.symmetric(horizontal: 14),
                 child: DropdownButtonHideUnderline(
                   child: DropdownButton<String>(
-                    value: _selectedZone,
+                    value: _selectedCity,
                     isExpanded: true,
                     icon: const Icon(Icons.keyboard_arrow_down, color: Colors.black54),
-                    items: _zones.map((zone) {
+                    items: _cities.map((city) {
                       return DropdownMenuItem(
-                        value: zone,
-                        child: Text(zone, style: const TextStyle(fontSize: 14, color: Color(0xFF0F172A))),
+                        value: city,
+                        child: Row(
+                          children: [
+                            const Icon(Icons.location_city_rounded, size: 18, color: AmeexColors.primaryBlue),
+                            const SizedBox(width: 8),
+                            Text(city, style: const TextStyle(fontSize: 14, color: Color(0xFF0F172A), fontWeight: FontWeight.w500)),
+                          ],
+                        ),
                       );
                     }).toList(),
                     onChanged: (val) {
-                      if (val != null) setState(() => _selectedZone = val);
+                      if (val != null) setState(() => _selectedCity = val);
                     },
                   ),
                 ),

@@ -18,7 +18,7 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
   final supabase = Supabase.instance.client;
 
   String _selectedVehicle = 'Moto';
-  String _selectedZone = 'Toutes les zones';
+  String _selectedCity = 'Toutes les villes';
   final _customerNameController = TextEditingController();
   final _customerPhoneController = TextEditingController(text: '06');
   final _trackingNumberController = TextEditingController();
@@ -27,9 +27,9 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
   final _amountController = TextEditingController(text: '150');
   final _driverFeeController = TextEditingController(text: '25'); // Gain du livreur
   
-  final String _selectedCity = 'Casablanca';
   String? _selectedDriverId;
   List<Map<String, dynamic>> _drivers = [];
+  Set<String> _onlineDriverIds = {};
 
   bool _isLoadingDrivers = true;
   bool _isSubmitting = false;
@@ -42,18 +42,23 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
     {'name': 'Fourgonnette', 'label': 'Van', 'icon': Icons.local_shipping_rounded},
   ];
 
-  final List<String> _casablancaZones = [
-    'Toutes les zones',
-    'Casablanca - Maarif & Anfa',
-    'Casablanca - Sidi Maarouf & Californie',
-    'Casablanca - Centre Ville & Port',
-    'Casablanca - Ain Sebaa & Bernoussi',
-    'Casablanca - Bourgogne & Ain Diab',
-    'Casablanca - Hay Hassani & Oulfa',
-    'Casablanca - Mers Sultan & 2 Mars',
-    'Casablanca - Hay Mohammadi & Roches Noires',
-    'Casablanca - Sbata, Ben M\'sick & Moulay Rachid',
-    'Casablanca - Bouskoura & Errahma',
+  final List<String> _cities = [
+    'Toutes les villes',
+    'Casablanca',
+    'Rabat',
+    'Marrakech',
+    'Tanger',
+    'Fès',
+    'Agadir',
+    'Meknès',
+    'Oujda',
+    'Kénitra',
+    'Tétouan',
+    'Salé',
+    'Mohammedia',
+    'El Jadida',
+    'Nador',
+    'Béni Mellal',
   ];
 
   @override
@@ -85,9 +90,29 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
           .select('id, full_name, phone, vehicle_type, zone, avatar_url, role')
           .eq('role', 'driver');
 
+      final onlineIds = <String>{};
+      try {
+        final locData = await supabase
+            .from('driver_locations')
+            .select('driver_id, updated_at');
+        final now = DateTime.now().toUtc();
+        for (final l in locData) {
+          final dId = l['driver_id'] as String?;
+          final updatedAtStr = l['updated_at'] as String?;
+          if (dId != null && updatedAtStr != null) {
+            final dt = DateTime.tryParse(updatedAtStr);
+            // Considered online if updated within last 20 minutes
+            if (dt != null && now.difference(dt.toUtc()).inMinutes.abs() < 20) {
+              onlineIds.add(dId);
+            }
+          }
+        }
+      } catch (_) {}
+
       if (mounted) {
         setState(() {
           _drivers = List<Map<String, dynamic>>.from(data);
+          _onlineDriverIds = onlineIds;
           _syncSelectedDriverWithFilter();
           _isLoadingDrivers = false;
         });
@@ -119,21 +144,12 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
         if (!match) return false;
       }
 
-      // 2. Zone filter
-      if (_selectedZone != 'Toutes les zones') {
+      // 2. City filter
+      if (_selectedCity != 'Toutes les villes') {
         final z = DriverAvatarHelper.cleanZone(driver['zone']).toLowerCase();
-        final targetZone = _selectedZone.toLowerCase();
-        if (!z.contains(targetZone) && !targetZone.contains(z)) {
-          final parts = targetZone.replaceFirst('casablanca -', '').split('&');
-          bool partMatch = false;
-          for (final p in parts) {
-            final cp = p.trim();
-            if (cp.isNotEmpty && z.contains(cp)) {
-              partMatch = true;
-              break;
-            }
-          }
-          if (!partMatch) return false;
+        final targetCity = _selectedCity.toLowerCase();
+        if (!z.contains(targetCity)) {
+          return false;
         }
       }
 
@@ -162,7 +178,7 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
           ? _parcelNumberController.text.trim()
           : _generateParcelNumber();
 
-      final effectiveCity = _selectedZone != 'Toutes les zones' ? _selectedZone : _selectedCity;
+      final effectiveCity = _selectedCity != 'Toutes les villes' ? _selectedCity : 'Casablanca';
       final String rawAddress = _addressController.text.trim().isEmpty 
           ? '$effectiveCity Centre' 
           : _addressController.text.trim();
@@ -198,7 +214,7 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
           // Fallback in case SQL columns delivery_type/driver_fee not yet added
           await supabase.from('orders').insert({
             ...insertPayload,
-            'delivery_address': '$addressWithParcel [Véhicule: $_selectedVehicle | Zone: $_selectedZone | Gain: $driverFee MAD]',
+            'delivery_address': '$addressWithParcel [Véhicule: $_selectedVehicle | Ville: $effectiveCity | Gain: $driverFee MAD]',
           });
         }
       }
@@ -362,13 +378,13 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
 
               const SizedBox(height: 16),
 
-              // 1. bis Zone de livraison (Casablanca)
+              // 1. bis Ville de livraison
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  _buildLabel('Zone d\'affectation (Casablanca)'),
+                  _buildLabel('Ville de livraison'),
                   Text(
-                    'Filtre par zone',
+                    'Filtre livreurs par ville',
                     style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
                   ),
                 ],
@@ -379,23 +395,23 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 14),
                 child: DropdownButtonHideUnderline(
                   child: DropdownButton<String>(
-                    value: _selectedZone,
+                    value: _selectedCity,
                     isExpanded: true,
                     icon: const Icon(Icons.keyboard_arrow_down, color: Colors.black54),
-                    items: _casablancaZones.map((zone) {
+                    items: _cities.map((city) {
                       return DropdownMenuItem(
-                        value: zone,
+                        value: city,
                         child: Row(
                           children: [
                             Icon(
-                              zone == 'Toutes les zones' ? Icons.map_rounded : Icons.location_on_rounded,
+                              city == 'Toutes les villes' ? Icons.map_rounded : Icons.location_city_rounded,
                               size: 16,
-                              color: zone == 'Toutes les zones' ? Colors.grey : AmeexColors.primaryBlue,
+                              color: city == 'Toutes les villes' ? Colors.grey : AmeexColors.primaryBlue,
                             ),
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
-                                zone,
+                                city,
                                 style: const TextStyle(fontSize: 13, color: Color(0xFF0F172A), fontWeight: FontWeight.w500),
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -407,7 +423,7 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
                     onChanged: (val) {
                       if (val != null) {
                         setState(() {
-                          _selectedZone = val;
+                          _selectedCity = val;
                           _syncSelectedDriverWithFilter();
                         });
                       }
@@ -593,43 +609,27 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
 
               const SizedBox(height: 16),
 
-              // 5. Ville & Zone de destination
+              // 5. Ville choisie
               Row(
                 children: [
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _buildLabel('Ville'),
+                        _buildLabel('Ville de livraison'),
                         const SizedBox(height: 6),
                         Container(
                           decoration: _fieldBoxDecoration(),
                           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-                          child: const Row(
+                          child: Row(
                             children: [
-                              Icon(Icons.location_city_rounded, size: 18, color: AmeexColors.primaryBlue),
-                              SizedBox(width: 8),
-                              Text('Casablanca', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+                              const Icon(Icons.location_city_rounded, size: 18, color: AmeexColors.primaryBlue),
+                              const SizedBox(width: 8),
+                              Text(
+                                _selectedCity == 'Toutes les villes' ? 'Casablanca' : _selectedCity,
+                                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                              ),
                             ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildLabel('Zone sélectionnée'),
-                        const SizedBox(height: 6),
-                        Container(
-                          decoration: _fieldBoxDecoration(),
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-                          child: Text(
-                            _selectedZone == 'Toutes les zones' ? 'Grand Casablanca' : _selectedZone.replaceFirst('Casablanca - ', ''),
-                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AmeexColors.primaryBlue),
-                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],
@@ -717,16 +717,35 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
                                   final name = driver['full_name'] ?? 'Livreur';
                                   final vehicle = DriverAvatarHelper.cleanVehicle(driver['vehicle_type']);
                                   final zone = DriverAvatarHelper.cleanZone(driver['zone']);
+                                  final isOnline = _onlineDriverIds.contains(driver['id']);
 
                                   return DropdownMenuItem<String?>(
                                     value: driver['id'] as String,
                                     child: Row(
                                       children: [
-                                        DriverAvatar(
-                                          driverData: driver,
-                                          radius: 16,
-                                          borderColor: AmeexColors.primaryBlue,
-                                          borderWidth: 1.5,
+                                        Stack(
+                                          clipBehavior: Clip.none,
+                                          children: [
+                                            DriverAvatar(
+                                              driverData: driver,
+                                              radius: 16,
+                                              borderColor: isOnline ? const Color(0xFF10B981) : AmeexColors.primaryBlue,
+                                              borderWidth: 1.5,
+                                            ),
+                                            Positioned(
+                                              bottom: 0,
+                                              right: 0,
+                                              child: Container(
+                                                width: 10,
+                                                height: 10,
+                                                decoration: BoxDecoration(
+                                                  shape: BoxShape.circle,
+                                                  color: isOnline ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                                                  border: Border.all(color: Colors.white, width: 2),
+                                                ),
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                         const SizedBox(width: 10),
                                         Expanded(
@@ -734,10 +753,46 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
                                             crossAxisAlignment: CrossAxisAlignment.start,
                                             mainAxisAlignment: MainAxisAlignment.center,
                                             children: [
-                                              Text(
-                                                name,
-                                                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
-                                                overflow: TextOverflow.ellipsis,
+                                              Row(
+                                                children: [
+                                                  Expanded(
+                                                    child: Text(
+                                                      name,
+                                                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                                                      overflow: TextOverflow.ellipsis,
+                                                    ),
+                                                  ),
+                                                  Container(
+                                                    margin: const EdgeInsets.only(left: 4),
+                                                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                                                    decoration: BoxDecoration(
+                                                      color: isOnline ? const Color(0xFFDCFCE7) : const Color(0xFFFEE2E2),
+                                                      borderRadius: BorderRadius.circular(4),
+                                                    ),
+                                                    child: Row(
+                                                      mainAxisSize: MainAxisSize.min,
+                                                      children: [
+                                                        Container(
+                                                          width: 6,
+                                                          height: 6,
+                                                          decoration: BoxDecoration(
+                                                            shape: BoxShape.circle,
+                                                            color: isOnline ? const Color(0xFF15803D) : const Color(0xFFDC2626),
+                                                          ),
+                                                        ),
+                                                        const SizedBox(width: 4),
+                                                        Text(
+                                                          isOnline ? 'En ligne' : 'Hors ligne',
+                                                          style: TextStyle(
+                                                            fontSize: 9.5,
+                                                            fontWeight: FontWeight.bold,
+                                                            color: isOnline ? const Color(0xFF15803D) : const Color(0xFFDC2626),
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                ],
                                               ),
                                               Text(
                                                 '$vehicle • $zone',
@@ -774,7 +829,7 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: Text(
-                                    'Aucun livreur avec le véhicule "$_selectedVehicle" dans cette zone. Vous pouvez choisir "Tous" ou enregistrer la commande sans livreur.',
+                                    'Aucun livreur avec le véhicule "$_selectedVehicle" dans cette ville ($_selectedCity). Vous pouvez choisir "Tous" ou enregistrer la commande sans livreur.',
                                     style: const TextStyle(fontSize: 11.5, color: Color(0xFF92400E)),
                                   ),
                                 ),
@@ -796,6 +851,7 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
                             final phone = selectedDriver['phone'] ?? '';
                             final vehicle = DriverAvatarHelper.cleanVehicle(selectedDriver['vehicle_type']);
                             final zone = DriverAvatarHelper.cleanZone(selectedDriver['zone']);
+                            final isOnline = _onlineDriverIds.contains(selectedDriver['id']);
 
                             return Container(
                               margin: const EdgeInsets.only(top: 10),
@@ -807,12 +863,30 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
                               ),
                               child: Row(
                                 children: [
-                                  DriverAvatar(
-                                    driverData: selectedDriver,
-                                    radius: 22,
-                                    borderColor: AmeexColors.primaryBlue,
-                                    borderWidth: 2,
-                                    showBadge: true,
+                                  Stack(
+                                    clipBehavior: Clip.none,
+                                    children: [
+                                      DriverAvatar(
+                                        driverData: selectedDriver,
+                                        radius: 22,
+                                        borderColor: isOnline ? const Color(0xFF10B981) : AmeexColors.primaryBlue,
+                                        borderWidth: 2,
+                                        showBadge: true,
+                                      ),
+                                      Positioned(
+                                        bottom: 0,
+                                        right: 0,
+                                        child: Container(
+                                          width: 12,
+                                          height: 12,
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            color: isOnline ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                                            border: Border.all(color: Colors.white, width: 2),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                   const SizedBox(width: 12),
                                   Expanded(
@@ -837,11 +911,41 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
                                                 style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                                               ),
                                             ),
+                                            const SizedBox(width: 6),
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                                              decoration: BoxDecoration(
+                                                color: isOnline ? const Color(0xFFDCFCE7) : const Color(0xFFFEE2E2),
+                                                borderRadius: BorderRadius.circular(6),
+                                              ),
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Container(
+                                                    width: 6,
+                                                    height: 6,
+                                                    decoration: BoxDecoration(
+                                                      shape: BoxShape.circle,
+                                                      color: isOnline ? const Color(0xFF15803D) : const Color(0xFFDC2626),
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 4),
+                                                  Text(
+                                                    isOnline ? 'En ligne' : 'Hors ligne',
+                                                    style: TextStyle(
+                                                      fontSize: 10,
+                                                      fontWeight: FontWeight.bold,
+                                                      color: isOnline ? const Color(0xFF15803D) : const Color(0xFFDC2626),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
                                           ],
                                         ),
                                         const SizedBox(height: 2),
                                         Text(
-                                          'Zone : $zone • 📞 $phone',
+                                          'Ville : $zone • 📞 $phone',
                                           style: const TextStyle(fontSize: 11, color: Color(0xFF475569)),
                                         ),
                                       ],
