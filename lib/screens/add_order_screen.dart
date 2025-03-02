@@ -19,11 +19,13 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
 
   String _selectedVehicle = 'Moto';
   String _selectedCity = 'Toutes les villes';
+  DateTime _selectedDeliveryDate = DateTime.now();
   final _customerNameController = TextEditingController();
   final _customerPhoneController = TextEditingController(text: '06');
   final _trackingNumberController = TextEditingController();
   final _parcelNumberController = TextEditingController();
   final _addressController = TextEditingController();
+  final _notesController = TextEditingController();
   final _amountController = TextEditingController(text: '150');
   final _driverFeeController = TextEditingController(text: '25'); // Gain du livreur
   
@@ -166,6 +168,85 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
     }
   }
 
+  Widget _buildQuickDateChip(String label, int addDays) {
+    final targetDate = DateTime.now().add(Duration(days: addDays));
+    final isSelected = _selectedDeliveryDate.year == targetDate.year &&
+        _selectedDeliveryDate.month == targetDate.month &&
+        _selectedDeliveryDate.day == targetDate.day;
+
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _selectedDeliveryDate = targetDate;
+        });
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? AmeexColors.primaryBlue : Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: isSelected ? AmeexColors.primaryBlue : const Color(0xFFE2E8F0),
+            width: isSelected ? 1.5 : 1.0,
+          ),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: AmeexColors.primaryBlue.withValues(alpha: 0.2),
+                    blurRadius: 4,
+                    offset: const Offset(0, 1),
+                  ),
+                ]
+              : null,
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.bold,
+            color: isSelected ? Colors.white : const Color(0xFF475569),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickDeliveryDate() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDeliveryDate,
+      firstDate: now.subtract(const Duration(days: 1)),
+      lastDate: now.add(const Duration(days: 90)),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: AmeexColors.primaryBlue,
+              onPrimary: Colors.white,
+              onSurface: AmeexColors.textDark,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (picked != null) {
+      setState(() {
+        _selectedDeliveryDate = picked;
+      });
+    }
+  }
+
+  String _formatDisplayDate(DateTime dt) {
+    const days = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+    const months = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc'];
+    final dayName = days[dt.weekday - 1];
+    final monthName = months[dt.month - 1];
+    return '$dayName ${dt.day} $monthName ${dt.year}';
+  }
+
   Future<void> _submitOrder() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -183,6 +264,10 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
           ? '$effectiveCity Centre' 
           : _addressController.text.trim();
       final String addressWithParcel = ParcelHelper.formatWithParcel(rawAddress, parcelNumber);
+
+      final String notes = _notesController.text.trim();
+      final String formattedDeliveryDate =
+          '${_selectedDeliveryDate.year}-${_selectedDeliveryDate.month.toString().padLeft(2, '0')}-${_selectedDeliveryDate.day.toString().padLeft(2, '0')}';
 
       final Map<String, dynamic> insertPayload = {
         'tracking_number': _trackingNumberController.text.trim(),
@@ -202,6 +287,8 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
           'delivery_type': _selectedVehicle,
           'driver_fee': driverFee,
           'parcel_number': parcelNumber,
+          'delivery_date': formattedDeliveryDate,
+          'notes': notes.isNotEmpty ? notes : null,
         });
       } catch (_) {
         try {
@@ -209,12 +296,20 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
             ...insertPayload,
             'delivery_type': _selectedVehicle,
             'driver_fee': driverFee,
+            'parcel_number': parcelNumber,
           });
         } catch (_) {
-          // Fallback in case SQL columns delivery_type/driver_fee not yet added
+          final String extraInfo = [
+            'Véhicule: $_selectedVehicle',
+            'Ville: $effectiveCity',
+            'Date livraison: $formattedDeliveryDate',
+            if (notes.isNotEmpty) 'Remarques: $notes',
+            'Gain: $driverFee MAD',
+          ].join(' | ');
+
           await supabase.from('orders').insert({
             ...insertPayload,
-            'delivery_address': '$addressWithParcel [Véhicule: $_selectedVehicle | Ville: $effectiveCity | Gain: $driverFee MAD]',
+            'delivery_address': '$addressWithParcel [$extraInfo]',
           });
         }
       }
@@ -251,6 +346,7 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
     _trackingNumberController.dispose();
     _parcelNumberController.dispose();
     _addressController.dispose();
+    _notesController.dispose();
     _amountController.dispose();
     _driverFeeController.dispose();
     super.dispose();
@@ -651,6 +747,85 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
                   prefixIcon: const Icon(Icons.location_on_outlined, size: 20, color: Colors.black45),
                 ),
                 validator: (val) => val == null || val.trim().isEmpty ? 'Veuillez saisir l\'adresse exacte' : null,
+              ),
+
+              const SizedBox(height: 16),
+
+              // 6. bis Date de livraison souhaitée (تاريخ التسليم)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _buildLabel('Date de livraison souhaitée'),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2.5),
+                    decoration: BoxDecoration(
+                      color: AmeexColors.primaryBlue.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      _formatDisplayDate(_selectedDeliveryDate),
+                      style: const TextStyle(
+                        color: AmeexColors.primaryBlue,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  _buildQuickDateChip('Aujourd\'hui', 0),
+                  const SizedBox(width: 6),
+                  _buildQuickDateChip('Demain', 1),
+                  const SizedBox(width: 6),
+                  _buildQuickDateChip('Après-demain', 2),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: InkWell(
+                      onTap: _pickDeliveryDate,
+                      borderRadius: BorderRadius.circular(10),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 8),
+                        decoration: BoxDecoration(
+                          color: AmeexColors.surfaceAlt,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                        ),
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.calendar_month_rounded, size: 16, color: AmeexColors.primaryBlue),
+                            SizedBox(width: 4),
+                            Text(
+                              'Autre date',
+                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AmeexColors.primaryBlue),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 16),
+
+              // 6. ter Remarques & Instructions spéciales (ملاحظات)
+              _buildLabel('Remarques & Instructions spéciales (ملاحظات)'),
+              const SizedBox(height: 6),
+              TextFormField(
+                controller: _notesController,
+                maxLines: 2,
+                style: const TextStyle(fontSize: 13, color: Color(0xFF0F172A)),
+                decoration: _inputDecoration(
+                  hint: 'Ex: Sonner à l\'interphone B, appeler avant d\'arriver, ne pas laisser chez le concierge...',
+                  prefixIcon: const Padding(
+                    padding: EdgeInsets.only(bottom: 22),
+                    child: Icon(Icons.sticky_note_2_outlined, size: 20, color: Colors.black45),
+                  ),
+                ),
               ),
 
               const SizedBox(height: 16),
