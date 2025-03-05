@@ -87,12 +87,30 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
 
   Future<void> _fetchDrivers() async {
     try {
-      final data = await supabase
-          .from('profiles')
-          .select('id, full_name, phone, vehicle_type, zone, avatar_url, role')
-          .eq('role', 'driver');
+      List<dynamic> data;
+      try {
+        data = await supabase
+            .from('profiles')
+            .select('id, full_name, phone, vehicle_type, zone, avatar_url, role, is_online, status')
+            .eq('role', 'driver');
+      } catch (_) {
+        data = await supabase
+            .from('profiles')
+            .select('id, full_name, phone, vehicle_type, zone, avatar_url, role')
+            .eq('role', 'driver');
+      }
 
       final onlineIds = <String>{};
+      // Check profile is_online flag (persists even when app is closed)
+      for (final d in data) {
+        final dId = d['id'] as String?;
+        if (dId != null) {
+          if (d['is_online'] == true || d['status'] == 'online') {
+            onlineIds.add(dId);
+          }
+        }
+      }
+
       try {
         final locData = await supabase
             .from('driver_locations')
