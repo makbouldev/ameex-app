@@ -1500,54 +1500,7 @@ class _DriverLiveMapTabState extends State<DriverLiveMapTab> {
                                     ],
                                   ),
                                 ),
-                                InkWell(
-                                  onTap: () async {
-                                    final scanned = await ParcelScannerDialog.show(context);
-                                    if (scanned != null && context.mounted) {
-                                      final isMatch = scanned.trim().toLowerCase() == parcelNumber.toLowerCase();
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(
-                                          content: Row(
-                                            children: [
-                                              Icon(
-                                                isMatch ? Icons.check_circle_rounded : Icons.warning_rounded,
-                                                color: Colors.white,
-                                              ),
-                                              const SizedBox(width: 8),
-                                              Expanded(
-                                                child: Text(
-                                                  isMatch
-                                                      ? '✅ Colis vérifié avec succès ($scanned) !'
-                                                      : '⚠️ Attention : Le colis scanné ($scanned) ne correspond pas à cette commande ($parcelNumber) !',
-                                                  style: const TextStyle(fontWeight: FontWeight.bold),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                          backgroundColor: isMatch ? const Color(0xFF10B981) : Colors.redAccent,
-                                          duration: const Duration(seconds: 4),
-                                          behavior: SnackBarBehavior.floating,
-                                        ),
-                                      );
-                                    }
-                                  },
-                                  borderRadius: BorderRadius.circular(8),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                    decoration: BoxDecoration(
-                                      color: AmeexColors.primaryBlue,
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: const [
-                                        Icon(Icons.qr_code_scanner_rounded, color: Colors.white, size: 14),
-                                        SizedBox(width: 4),
-                                        Text('Scanner', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
-                                      ],
-                                    ),
-                                  ),
-                                ),
+                                // Scanner supprimé
                               ],
                             ),
                           );
@@ -2446,10 +2399,12 @@ class _DriverEarningsTabState extends State<DriverEarningsTab> {
 
                 const SizedBox(height: 28),
 
-                // Balance (inline currency — same weight)
-                Text(
-                  _fmtMoney(available),
+                // Balance (animated, inline currency — same weight)
+                AmeexAnimatedNumber(
+                  value: available,
+                  format: _fmtMoney,
                   style: const TextStyle(
+                    fontFamily: AmeexTheme.fontFamily,
                     color: Colors.white,
                     fontSize: 40,
                     fontWeight: FontWeight.w700,
@@ -2702,9 +2657,11 @@ class _DriverEarningsTabState extends State<DriverEarningsTab> {
                 ),
               ),
               const SizedBox(width: 10),
-              Text(
-                needsRemittance ? _fmtMoney(amount) : '0',
+              AmeexAnimatedNumber(
+                value: needsRemittance ? amount : 0,
+                format: _fmtMoney,
                 style: TextStyle(
+                  fontFamily: AmeexTheme.fontFamily,
                   fontSize: 20,
                   fontWeight: FontWeight.w700,
                   letterSpacing: -0.5,

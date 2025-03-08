@@ -1,6 +1,205 @@
 import 'package:flutter/material.dart';
 import '../theme/ameex_theme.dart';
 
+/// Animated number counter — eases from 0 to target.
+/// Gives the "real app" feel, especially on KPIs and balances.
+class AmeexAnimatedNumber extends StatefulWidget {
+  final double value;
+  final Duration duration;
+  final TextStyle? style;
+  final String Function(double) format;
+  final String suffix;
+  final TextStyle? suffixStyle;
+
+  AmeexAnimatedNumber({
+    super.key,
+    required this.value,
+    this.duration = const Duration(milliseconds: 650),
+    this.style,
+    String Function(double)? format,
+    this.suffix = '',
+    this.suffixStyle,
+  }) : format = format ?? ((v) => v.toStringAsFixed(0));
+
+  @override
+  State<AmeexAnimatedNumber> createState() => _AmeexAnimatedNumberState();
+}
+
+class _AmeexAnimatedNumberState extends State<AmeexAnimatedNumber>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+  late Animation<double> _anim;
+  double _oldValue = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(vsync: this, duration: widget.duration);
+    _anim = Tween<double>(begin: 0, end: widget.value).animate(
+      CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic),
+    );
+    _ctrl.forward();
+  }
+
+  @override
+  void didUpdateWidget(AmeexAnimatedNumber oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.value != widget.value) {
+      _oldValue = oldWidget.value;
+      _anim = Tween<double>(begin: _oldValue, end: widget.value).animate(
+        CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic),
+      );
+      _ctrl.forward(from: 0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _anim,
+      builder: (context, _) {
+        final value = widget.format(_anim.value);
+        if (widget.suffix.isEmpty) {
+          return Text(value, style: widget.style);
+        }
+        return RichText(
+          text: TextSpan(
+            style: widget.style,
+            children: [
+              TextSpan(text: value),
+              TextSpan(text: widget.suffix, style: widget.suffixStyle),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Soft sparkline (mini trend line) — the biggest "not AI-generated"
+/// signal: real apps show trends, not just numbers.
+class AmeexSparkline extends StatelessWidget {
+  final List<double> values;
+  final Color color;
+  final double strokeWidth;
+  final double height;
+  final bool fill;
+
+  const AmeexSparkline({
+    super.key,
+    required this.values,
+    this.color = AmeexColors.primaryBlue,
+    this.strokeWidth = 1.6,
+    this.height = 28,
+    this.fill = true,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: height,
+      width: double.infinity,
+      child: CustomPaint(
+        painter: _SparklinePainter(
+          values: values,
+          color: color,
+          strokeWidth: strokeWidth,
+          fill: fill,
+        ),
+      ),
+    );
+  }
+}
+
+class _SparklinePainter extends CustomPainter {
+  final List<double> values;
+  final Color color;
+  final double strokeWidth;
+  final bool fill;
+
+  _SparklinePainter({
+    required this.values,
+    required this.color,
+    required this.strokeWidth,
+    required this.fill,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (values.length < 2) return;
+
+    final maxV = values.reduce((a, b) => a > b ? a : b);
+    final minV = values.reduce((a, b) => a < b ? a : b);
+    final range = (maxV - minV) == 0 ? 1.0 : (maxV - minV);
+    final padding = 4.0;
+    final chartHeight = size.height - padding * 2;
+
+    final path = Path();
+    final points = <Offset>[];
+    for (int i = 0; i < values.length; i++) {
+      final x = (i / (values.length - 1)) * size.width;
+      final norm = (values[i] - minV) / range;
+      final y = padding + chartHeight - (norm * chartHeight);
+      points.add(Offset(x, y));
+    }
+
+    // Smooth curve using quadratic beziers
+    path.moveTo(points.first.dx, points.first.dy);
+    for (int i = 1; i < points.length; i++) {
+      final prev = points[i - 1];
+      final curr = points[i];
+      final midX = (prev.dx + curr.dx) / 2;
+      path.quadraticBezierTo(prev.dx, prev.dy, midX, (prev.dy + curr.dy) / 2);
+      if (i == points.length - 1) {
+        path.lineTo(curr.dx, curr.dy);
+      }
+    }
+
+    // Fill below the curve
+    if (fill) {
+      final fillPath = Path.from(path);
+      fillPath.lineTo(size.width, size.height);
+      fillPath.lineTo(0, size.height);
+      fillPath.close();
+      final fillPaint = Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            color.withValues(alpha: 0.18),
+            color.withValues(alpha: 0.0),
+          ],
+        ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
+      canvas.drawPath(fillPath, fillPaint);
+    }
+
+    // Line
+    final linePaint = Paint()
+      ..color = color
+      ..strokeWidth = strokeWidth
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+    canvas.drawPath(path, linePaint);
+
+    // End dot
+    final dotPaint = Paint()..color = color;
+    canvas.drawCircle(points.last, strokeWidth + 1.2, dotPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _SparklinePainter oldDelegate) =>
+      oldDelegate.values != values ||
+      oldDelegate.color != color ||
+      oldDelegate.strokeWidth != strokeWidth;
+}
+
 /// Branded full-screen splash — elegant pulsing brand-blue core
 /// surrounded by expanding rings. Used during auth/profile loading
 /// and other blocking transitions.

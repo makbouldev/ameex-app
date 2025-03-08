@@ -274,7 +274,7 @@ class _AdminDashboardHomeTabState extends State<AdminDashboardHomeTab> {
 
                       const SizedBox(height: 22),
 
-                      // SIGNATURE HERO CARD — dark gradient, premium feel
+                      // SIGNATURE HERO CARD — bank-card style with animated balance
                       _buildHeroCard(
                         revenue: totalRevenue.toDouble(),
                         total: totalCount,
@@ -284,36 +284,12 @@ class _AdminDashboardHomeTabState extends State<AdminDashboardHomeTab> {
 
                       const SizedBox(height: 14),
 
-                      // Secondary stat tiles — refined
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildCleanStat(
-                              icon: Icons.local_shipping_outlined,
-                              label: 'En transit',
-                              value: inTransitCount.toString(),
-                              accent: AmeexColors.primaryBlue,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: _buildCleanStat(
-                              icon: Icons.check_circle_outline_rounded,
-                              label: 'Livré',
-                              value: deliveredCount.toString(),
-                              accent: const Color(0xFF10B981),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: _buildCleanStat(
-                              icon: Icons.schedule_rounded,
-                              label: 'En attente',
-                              value: pendingCount.toString(),
-                              accent: const Color(0xFFF59E0B),
-                            ),
-                          ),
-                        ],
+                      // ==== DATA STRIP with sparklines ====
+                      _buildDataStrip(
+                        orders: orders,
+                        inTransit: inTransitCount,
+                        delivered: deliveredCount,
+                        pending: pendingCount,
                       ),
 
                       const SizedBox(height: 24),
@@ -429,47 +405,131 @@ class _AdminDashboardHomeTabState extends State<AdminDashboardHomeTab> {
     return '${now.day} ${months[now.month - 1]}';
   }
 
-  Widget _buildCleanStat({
-    required IconData icon,
-    required String label,
-    required String value,
-    required Color accent,
+  /// 7-day trend series for the sparkline, based on orders createdAt
+  /// and a simple status filter. Returns at least 2 points.
+  List<double> _buildSparkSeries(List<Map<String, dynamic>> orders, bool Function(Map<String, dynamic>) match) {
+    const days = 7;
+    final now = DateTime.now();
+    final buckets = List<double>.filled(days, 0);
+    for (final o in orders) {
+      if (!match(o)) continue;
+      final created = DateTime.tryParse((o['created_at'] ?? '').toString());
+      if (created == null) continue;
+      final diff = now.difference(created).inDays;
+      if (diff < 0 || diff >= days) continue;
+      buckets[days - 1 - diff] += 1;
+    }
+    // Slight jitter so flat zero series still shows a line
+    if (buckets.every((v) => v == 0)) return const [0.3, 0.5, 0.4, 0.6, 0.5, 0.4, 0.5];
+    return buckets;
+  }
+
+  Widget _buildDataStrip({
+    required List<Map<String, dynamic>> orders,
+    required int inTransit,
+    required int delivered,
+    required int pending,
   }) {
+    final revenueSeries = _buildSparkSeries(orders, (o) => o['status'] == 'delivered');
+    final transitSeries = _buildSparkSeries(orders, (o) => o['status'] == 'in_transit');
+    final deliveredSeries = _buildSparkSeries(orders, (o) => o['status'] == 'delivered');
+    final pendingSeries = _buildSparkSeries(orders, (o) => o['status'] == 'pending');
+
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: AmeexDesign.shadowCard,
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Icon(icon, color: accent, size: 18),
-          const SizedBox(height: 12),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w700,
-              letterSpacing: -0.7,
-              color: AmeexColors.textDark,
-              height: 1.0,
+          Expanded(
+            child: _sparkCell(
+              label: 'Transit',
+              value: inTransit,
+              series: transitSeries,
+              color: AmeexColors.primaryBlue,
             ),
           ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-              color: AmeexColors.textMuted,
+          _vDivider(),
+          Expanded(
+            child: _sparkCell(
+              label: 'Livré',
+              value: delivered,
+              series: deliveredSeries,
+              color: const Color(0xFF10B981),
+            ),
+          ),
+          _vDivider(),
+          Expanded(
+            child: _sparkCell(
+              label: 'Attente',
+              value: pending,
+              series: pendingSeries,
+              color: const Color(0xFFF59E0B),
+            ),
+          ),
+          _vDivider(),
+          Expanded(
+            child: _sparkCell(
+              label: 'Livraisons',
+              value: delivered,
+              series: revenueSeries,
+              color: AmeexColors.primaryBlue,
             ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _vDivider() => Container(
+        width: 1,
+        height: 48,
+        margin: const EdgeInsets.symmetric(horizontal: 6),
+        color: AmeexColors.divider,
+      );
+
+  Widget _sparkCell({
+    required String label,
+    required int value,
+    required List<double> series,
+    required Color color,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 10.5,
+            fontWeight: FontWeight.w600,
+            color: AmeexColors.textMuted,
+            letterSpacing: 0.2,
+          ),
+        ),
+        const SizedBox(height: 6),
+        AmeexAnimatedNumber(
+          value: value.toDouble(),
+          format: (v) => v.toStringAsFixed(0),
+          style: const TextStyle(
+            fontFamily: AmeexTheme.fontFamily,
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.5,
+            color: AmeexColors.textDark,
+            height: 1,
+          ),
+        ),
+        const SizedBox(height: 6),
+        AmeexSparkline(
+          values: series,
+          color: color,
+          height: 22,
+        ),
+      ],
     );
   }
 
@@ -557,9 +617,11 @@ class _AdminDashboardHomeTabState extends State<AdminDashboardHomeTab> {
 
                 const SizedBox(height: 28),
 
-                Text(
-                  _formatMoney(revenue),
+                AmeexAnimatedNumber(
+                  value: revenue,
+                  format: _formatMoney,
                   style: const TextStyle(
+                    fontFamily: AmeexTheme.fontFamily,
                     color: Colors.white,
                     fontSize: 40,
                     fontWeight: FontWeight.w700,
@@ -633,6 +695,7 @@ class _AdminDashboardHomeTabState extends State<AdminDashboardHomeTab> {
       );
 
   Widget _heroMetric({required String label, required String value}) {
+    final n = double.tryParse(value) ?? 0;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -646,9 +709,11 @@ class _AdminDashboardHomeTabState extends State<AdminDashboardHomeTab> {
           ),
         ),
         const SizedBox(height: 4),
-        Text(
-          value,
+        AmeexAnimatedNumber(
+          value: n,
+          format: (v) => v.toStringAsFixed(0),
           style: const TextStyle(
+            fontFamily: AmeexTheme.fontFamily,
             color: Colors.white,
             fontSize: 15,
             fontWeight: FontWeight.w700,

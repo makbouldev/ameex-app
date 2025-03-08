@@ -4,7 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../theme/ameex_theme.dart';
 import '../widgets/driver_avatar.dart';
 import '../widgets/ameex_animations.dart';
-import '../widgets/parcel_scanner_dialog.dart';
+import '../widgets/parcel_scanner_dialog.dart'; // ParcelHelper utilities
 
 class AddOrderScreen extends StatefulWidget {
   const AddOrderScreen({super.key});
@@ -287,127 +287,34 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
 
               const SizedBox(height: 16),
 
-              // 4. bis. Numéro de Colis & Scanner Code-barres
-              Row(
-                children: [
-                  _buildLabel('Numéro du Colis (Code-barres / Référence)'),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFDCFCE7),
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: const Color(0xFF86EFAC)),
-                    ),
-                    child: const Text(
-                      'Reconnaissance Auto',
-                      style: TextStyle(color: Color(0xFF166534), fontSize: 10, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 6),
+              // 4. bis. Numéro de Colis (référence)
+              _buildLabel('Numéro du colis (référence)'),
+              const SizedBox(height: 8),
               TextFormField(
                 controller: _parcelNumberController,
                 style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  fontFamily: 'monospace',
-                  color: Color(0xFF0F172A),
-                  letterSpacing: 0.8,
+                  fontSize: 14.5,
+                  fontWeight: FontWeight.w600,
+                  color: AmeexColors.textDark,
+                  letterSpacing: 0.4,
                 ),
-                decoration: InputDecoration(
-                  filled: true,
-                  fillColor: Colors.white,
-                  hintText: 'Ex: CLS-CAS-89241-MA',
-                  prefixIcon: const Icon(Icons.inventory_2_outlined, size: 20, color: AmeexColors.primaryBlue),
-                  suffixIcon: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // Scanner Button with Ameex Blue badge
-                      InkWell(
-                        onTap: () async {
-                          final scanned = await ParcelScannerDialog.show(context);
-                          if (scanned != null && scanned.trim().isNotEmpty) {
-                            setState(() {
-                              _parcelNumberController.text = scanned.trim();
-                            });
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Row(
-                                    children: [
-                                      const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
-                                      const SizedBox(width: 8),
-                                      Text('Code colis scanné : $scanned'),
-                                    ],
-                                  ),
-                                  backgroundColor: const Color(0xFF10B981),
-                                  behavior: SnackBarBehavior.floating,
-                                  duration: const Duration(seconds: 2),
-                                ),
-                              );
-                            }
-                          }
-                        },
-                        borderRadius: BorderRadius.circular(8),
-                        child: Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 4),
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: AmeexColors.primaryBlue,
-                            borderRadius: BorderRadius.circular(8),
-                            boxShadow: [
-                              BoxShadow(
-                                color: AmeexColors.primaryBlue.withValues(alpha: 0.25),
-                                blurRadius: 4,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: const [
-                              Icon(Icons.qr_code_scanner_rounded, color: Colors.white, size: 16),
-                              SizedBox(width: 4),
-                              Text('Scanner', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
-                            ],
-                          ),
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.refresh, color: Colors.black45, size: 18),
-                        tooltip: 'Générer un nouveau code',
-                        onPressed: () {
-                          setState(() {
-                            _parcelNumberController.text = _generateParcelNumber();
-                          });
-                        },
-                      ),
-                    ],
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: const BorderSide(color: AmeexColors.primaryBlue, width: 1.5),
+                decoration: _inputDecoration(
+                  hint: 'Ex: CLS-CAS-89241-MA',
+                  prefixIcon: const Icon(Icons.inventory_2_outlined,
+                      size: 18, color: AmeexColors.textMuted),
+                  suffixIcon: IconButton(
+                    icon: const Icon(Icons.refresh_rounded,
+                        color: AmeexColors.textMuted, size: 18),
+                    tooltip: 'Générer un nouveau code',
+                    onPressed: () {
+                      setState(() {
+                        _parcelNumberController.text = _generateParcelNumber();
+                      });
+                    },
                   ),
                 ),
-                validator: (val) => val == null || val.trim().isEmpty ? 'Numéro de colis requis' : null,
-              ),
-              const SizedBox(height: 4),
-              Row(
-                children: [
-                  Icon(Icons.info_outline_rounded, size: 13, color: Colors.grey.shade600),
-                  const SizedBox(width: 4),
-                  Text(
-                    'Cliquez sur "Scanner" pour scanner le code-barres physique du colis.',
-                    style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
-                  ),
-                ],
+                validator: (val) =>
+                    val == null || val.trim().isEmpty ? 'Numéro de colis requis' : null,
               ),
 
               const SizedBox(height: 16),
