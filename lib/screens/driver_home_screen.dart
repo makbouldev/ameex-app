@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
@@ -131,6 +132,8 @@ class _DriverLiveMapTabState extends State<DriverLiveMapTab> {
   bool _isSwipeFinished = false;
 
   Map<String, dynamic>? _driverProfile;
+  bool _isDriverOnline = true;
+  String? _lastNotifiedOrderId;
 
   @override
   void initState() {
@@ -138,7 +141,16 @@ class _DriverLiveMapTabState extends State<DriverLiveMapTab> {
     final u = supabase.auth.currentUser;
     if (u != null) {
       supabase.from('profiles').select().eq('id', u.id).maybeSingle().then((p) {
-        if (mounted && p != null) setState(() => _driverProfile = p);
+        if (mounted && p != null) {
+          setState(() {
+            _driverProfile = p;
+            if (p['is_online'] != null) {
+              _isDriverOnline = p['is_online'] == true;
+            } else if (p['status'] != null) {
+              _isDriverOnline = p['status'] == 'online';
+            }
+          });
+        }
       });
     }
     _startLiveGPS();
@@ -397,6 +409,299 @@ class _DriverLiveMapTabState extends State<DriverLiveMapTab> {
     }
   }
 
+  Future<void> _toggleOnlineStatus(bool val) async {
+    setState(() => _isDriverOnline = val);
+    final user = supabase.auth.currentUser;
+    if (user == null) return;
+
+    try {
+      try {
+        await supabase.from('profiles').update({
+          'is_online': val,
+          'status': val ? 'online' : 'offline',
+        }).eq('id', user.id);
+      } catch (_) {
+        await supabase.from('profiles').update({
+          'status': val ? 'online' : 'offline',
+        }).eq('id', user.id);
+      }
+
+      if (val) {
+        try {
+          await supabase.from('driver_locations').upsert({
+            'driver_id': user.id,
+            'latitude': _driverLocation.latitude,
+            'longitude': _driverLocation.longitude,
+            'updated_at': DateTime.now().toUtc().toIso8601String(),
+          }, onConflict: 'driver_id');
+        } catch (_) {}
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(
+                  val ? Icons.check_circle_rounded : Icons.pause_circle_rounded,
+                  color: Colors.white,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    val
+                        ? '🟢 Statut EN LIGNE activé ! Vous restez visible même en fermant l\'app.'
+                        : '🔴 Statut HORS LIGNE (En pause).',
+                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: val ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (_) {}
+  }
+
+  void _showNewOrderNotification(Map<String, dynamic> order) {
+    HapticFeedback.heavyImpact();
+    SystemSound.play(SystemSoundType.alert);
+
+    final customerName = order['customer_name'] ?? 'Client';
+    final customerPhone = order['customer_phone'] ?? '';
+    final tracking = order['tracking_number'] ?? '#AMX';
+    final city = order['destination_city'] ?? 'Casablanca';
+    final address = order['delivery_address'] ?? '';
+    final driverFee = (order['driver_fee'] as num?)?.toDouble() ?? 25.0;
+    final deliveryDate = order['delivery_date']?.toString();
+    final notes = order['notes']?.toString();
+
+    showModalBottomSheet(
+      context: context,
+      isDismissible: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Container(
+          margin: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: const [
+              BoxShadow(color: Colors.black26, blurRadius: 20, offset: Offset(0, 4)),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header Banner
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [AmeexColors.primaryBlue, Color(0xFF1E40AF)],
+                  ),
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(20),
+                    topRight: Radius.circular(20),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.notifications_active_rounded, color: Color(0xFFFBBF24), size: 24),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'NOUVELLE COMMANDE REÇUE !',
+                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 14),
+                          ),
+                          Text(
+                            'Suivi : $tracking',
+                            style: const TextStyle(color: Colors.white70, fontSize: 11),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF10B981),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        '+$driverFee MAD',
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Content Body
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        const CircleAvatar(
+                          radius: 18,
+                          backgroundColor: Color(0xFFEFF5FF),
+                          child: Icon(Icons.person_rounded, color: AmeexColors.primaryBlue, size: 20),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                customerName,
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF0F172A)),
+                              ),
+                              Text(
+                                customerPhone,
+                                style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(Icons.location_on_rounded, color: Color(0xFFEF4444), size: 18),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  city,
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF0F172A)),
+                                ),
+                                Text(
+                                  address,
+                                  style: const TextStyle(fontSize: 11.5, color: Color(0xFF475569)),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    if (deliveryDate != null && deliveryDate.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          const Icon(Icons.calendar_today_rounded, size: 14, color: AmeexColors.primaryBlue),
+                          const SizedBox(width: 6),
+                          Text('Livraison prévue : $deliveryDate', style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFF0F172A))),
+                        ],
+                      ),
+                    ],
+
+                    if (notes != null && notes.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFFBEB),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: const Color(0xFFFDE68A)),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Icon(Icons.info_outline_rounded, size: 14, color: Color(0xFFD97706)),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                'Remarque : $notes',
+                                style: const TextStyle(fontSize: 11, color: Color(0xFF92400E)),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+
+                    const SizedBox(height: 16),
+
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () => Navigator.of(ctx).pop(),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                            child: const Text('Fermer', style: TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.bold)),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          flex: 2,
+                          child: ElevatedButton(
+                            onPressed: () {
+                              Navigator.of(ctx).pop();
+                              _acceptMissionGoToAgency();
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF10B981),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                            child: const Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.check_circle_rounded, size: 18),
+                                SizedBox(width: 6),
+                                Text('Accepter la course', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   void _listenToOrderUpdates() {
     final user = supabase.auth.currentUser;
     if (user == null) return;
@@ -409,6 +714,19 @@ class _DriverLiveMapTabState extends State<DriverLiveMapTab> {
           final active = orders
               .where((o) => o['status'] == 'pending' || o['status'] == 'accepted' || o['status'] == 'in_transit')
               .toList();
+
+          if (active.isNotEmpty) {
+            final latest = active.first;
+            // Check if this is a newly assigned pending order that we haven't notified about yet
+            if (latest['status'] == 'pending' && _lastNotifiedOrderId != latest['id']) {
+              _lastNotifiedOrderId = latest['id'] as String;
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) {
+                  _showNewOrderNotification(latest);
+                }
+              });
+            }
+          }
 
           if (mounted) {
             setState(() {
@@ -1046,14 +1364,53 @@ class _DriverLiveMapTabState extends State<DriverLiveMapTab> {
                       const SizedBox(width: 10),
                       Container(width: 1, height: 16, color: Colors.white24),
                       const SizedBox(width: 10),
-                      const AmeexPulseBadge(
-                        color: Color(0xFF10B981),
-                        size: 8,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        'En Ligne',
-                        style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700),
+                      // Interactive Online / Offline Toggle Switch Pill
+                      GestureDetector(
+                        onTap: () => _toggleOnlineStatus(!_isDriverOnline),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: _isDriverOnline ? const Color(0xFF065F46) : const Color(0xFF7F1D1D),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: _isDriverOnline ? const Color(0xFF34D399) : const Color(0xFFF87171),
+                              width: 1.2,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: (_isDriverOnline ? const Color(0xFF10B981) : const Color(0xFFEF4444)).withValues(alpha: 0.3),
+                                blurRadius: 6,
+                                offset: const Offset(0, 1),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              AmeexPulseBadge(
+                                color: _isDriverOnline ? const Color(0xFF34D399) : const Color(0xFFEF4444),
+                                size: 8,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                _isDriverOnline ? 'EN LIGNE' : 'HORS LIGNE',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 0.3,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Icon(
+                                _isDriverOnline ? Icons.check_circle_rounded : Icons.power_settings_new_rounded,
+                                color: _isDriverOnline ? const Color(0xFF34D399) : Colors.white70,
+                                size: 14,
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -1073,9 +1430,49 @@ class _DriverLiveMapTabState extends State<DriverLiveMapTab> {
                         borderColor: Colors.white,
                         borderWidth: 1.5,
                         showBadge: true,
-                        badgeColor: const Color(0xFF10B981),
+                        badgeColor: _isDriverOnline ? const Color(0xFF10B981) : const Color(0xFFEF4444),
                       ),
                     ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+        // OFFLINE WARNING BANNER (Shown when driver turned off their status)
+        if (!_isDriverOnline && !isInTransitDelivering)
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 58,
+            left: 14,
+            right: 14,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEF2F2),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFFCA5A5)),
+                boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4)],
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.pause_circle_rounded, color: Color(0xFFDC2626), size: 18),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text(
+                      'Vous êtes Hors Ligne. Cliquez sur "HORS LIGNE" pour vous rendre disponible.',
+                      style: TextStyle(color: Color(0xFF991B1B), fontSize: 11, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                  InkWell(
+                    onTap: () => _toggleOnlineStatus(true),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFDC2626),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: const Text('Activer', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11)),
+                    ),
                   ),
                 ],
               ),

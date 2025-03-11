@@ -24,7 +24,7 @@ class _AddDriverScreenState extends State<AddDriverScreen> {
   final _phoneController = TextEditingController(text: '06');
 
   String _selectedVehicle = 'Moto / Scooter';
-  String _selectedZone = 'Casablanca - Maarif & Anfa';
+  String _selectedCity = 'Casablanca';
   String _selectedAvatarUrl = '';
   Uint8List? _selectedImageBytes;
   String? _selectedImageName;
@@ -39,14 +39,22 @@ class _AddDriverScreenState extends State<AddDriverScreen> {
     {'name': 'Fourgonnette (Van)', 'icon': Icons.local_shipping_rounded},
   ];
 
-  final List<String> _zones = [
-    'Casablanca - Maarif & Anfa',
-    'Casablanca - Sidi Maarouf & Californie',
-    'Casablanca - Centre Ville & Port',
-    'Casablanca - Ain Sebaa & Bernoussi',
-    'Rabat - Agdal & Hassan',
-    'Marrakech - Guéliz & Médina',
-    'Tanger - Malabata & Centre',
+  final List<String> _cities = [
+    'Casablanca',
+    'Rabat',
+    'Marrakech',
+    'Tanger',
+    'Fès',
+    'Agadir',
+    'Meknès',
+    'Oujda',
+    'Kénitra',
+    'Tétouan',
+    'Salé',
+    'Mohammedia',
+    'El Jadida',
+    'Nador',
+    'Béni Mellal',
   ];
 
   @override
@@ -121,66 +129,55 @@ class _AddDriverScreenState extends State<AddDriverScreen> {
     final email = _emailController.text.trim();
     final password = _passwordController.text;
     final phone = _phoneController.text.trim();
-    final effectiveAvatarUrl = _selectedAvatarUrl.isNotEmpty
+    // Use clean HTTP avatar URL or preset so city/payload never contains bulky base64 data
+    final cleanAvatarUrl = (_selectedAvatarUrl.isNotEmpty && !_selectedAvatarUrl.startsWith('data:image'))
         ? _selectedAvatarUrl
         : DriverAvatarHelper.getAvatarUrl(null, defaultName: fullName);
-    final zoneWithAvatar = DriverAvatarHelper.formatWithAvatar(_selectedZone, effectiveAvatarUrl);
+    final cityWithAvatar = DriverAvatarHelper.formatWithAvatar(_selectedCity, cleanAvatarUrl);
 
     try {
-      // 1. Try via RPC function
-      try {
-        await supabase.rpc('create_driver_account', params: {
-          'p_email': email,
-          'p_password': password,
-          'p_full_name': fullName,
-          'p_phone': phone,
-          'p_vehicle_type': _selectedVehicle,
-          'p_zone': zoneWithAvatar,
-        });
-      } catch (rpcError) {
-        // Fallback: Use isolated client to register user so admin session is untouched
-        // and header/cookie limits are never exceeded by auth metadata.
-        final tempClient = SupabaseClient(
-          'https://mgnanilybghwxnppwsnc.supabase.co',
-          'sb_publishable_GG9AAryfHTt6M_7gL0fpCw_05KJClnp',
-          authOptions: const AuthClientOptions(authFlowType: AuthFlowType.implicit),
-        );
+      // Create driver user via isolated client so Admin session is untouched
+      final tempClient = SupabaseClient(
+        'https://mgnanilybghwxnppwsnc.supabase.co',
+        'sb_publishable_GG9AAryfHTt6M_7gL0fpCw_05KJClnp',
+        authOptions: const AuthClientOptions(authFlowType: AuthFlowType.implicit),
+      );
 
-        final res = await tempClient.auth.signUp(
-          email: email,
-          password: password,
-          data: {
+      final res = await tempClient.auth.signUp(
+        email: email,
+        password: password,
+        data: {
+          'full_name': fullName,
+          'role': 'driver',
+          'phone': phone,
+          'vehicle_type': _selectedVehicle,
+          'zone': _selectedCity,
+        },
+      );
+
+      if (res.user != null) {
+        try {
+          await supabase.from('profiles').upsert({
+            'id': res.user!.id,
             'full_name': fullName,
-            'role': 'driver',
             'phone': phone,
+            'role': 'driver',
             'vehicle_type': _selectedVehicle,
-            'zone': _selectedZone,
-          },
-        );
-
-        if (res.user != null) {
-          try {
-            await supabase.from('profiles').upsert({
-              'id': res.user!.id,
-              'full_name': fullName,
-              'phone': phone,
-              'role': 'driver',
-              'vehicle_type': _selectedVehicle,
-              'zone': zoneWithAvatar,
-              'avatar_url': effectiveAvatarUrl,
-            });
-          } catch (_) {
-            // If avatar_url column does not exist on profiles, zone has [AVATAR:...] tag
-            await supabase.from('profiles').upsert({
-              'id': res.user!.id,
-              'full_name': fullName,
-              'phone': phone,
-              'role': 'driver',
-              'vehicle_type': _selectedVehicle,
-              'zone': zoneWithAvatar,
-            });
-          }
+            'zone': cityWithAvatar,
+            'avatar_url': cleanAvatarUrl,
+          });
+        } catch (_) {
+          await supabase.from('profiles').upsert({
+            'id': res.user!.id,
+            'full_name': fullName,
+            'phone': phone,
+            'role': 'driver',
+            'vehicle_type': _selectedVehicle,
+            'zone': cityWithAvatar,
+          });
         }
+      } else {
+        throw Exception('Impossible d\'enregistrer le compte du livreur.');
       }
 
       if (!mounted) return;
@@ -236,7 +233,7 @@ class _AddDriverScreenState extends State<AddDriverScreen> {
                     const SizedBox(height: 4),
                     Text('Véhicule : $_selectedVehicle', style: const TextStyle(fontSize: 12, color: Color(0xFF475569))),
                     const SizedBox(height: 2),
-                    Text('Zone : $_selectedZone', style: const TextStyle(fontSize: 12, color: Color(0xFF475569))),
+                    Text('Ville : $_selectedCity', style: const TextStyle(fontSize: 12, color: Color(0xFF475569))),
                   ],
                 ),
               ),
@@ -648,25 +645,37 @@ class _AddDriverScreenState extends State<AddDriverScreen> {
 
               const SizedBox(height: 16),
 
-              // 5. Zone d'affectation
-              _buildLabel('Zone d\'affectation principale'),
+              // 5. Ville d'affectation (Ville de travail)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _buildLabel('Ville d\'affectation principale'),
+                  Text('Zone de travail', style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
+                ],
+              ),
               const SizedBox(height: 6),
               Container(
                 decoration: _fieldBoxDecoration(),
                 padding: const EdgeInsets.symmetric(horizontal: 14),
                 child: DropdownButtonHideUnderline(
                   child: DropdownButton<String>(
-                    value: _selectedZone,
+                    value: _selectedCity,
                     isExpanded: true,
                     icon: const Icon(Icons.keyboard_arrow_down, color: Colors.black54),
-                    items: _zones.map((zone) {
+                    items: _cities.map((city) {
                       return DropdownMenuItem(
-                        value: zone,
-                        child: Text(zone, style: const TextStyle(fontSize: 14, color: Color(0xFF0F172A))),
+                        value: city,
+                        child: Row(
+                          children: [
+                            const Icon(Icons.location_city_rounded, size: 18, color: AmeexColors.primaryBlue),
+                            const SizedBox(width: 8),
+                            Text(city, style: const TextStyle(fontSize: 14, color: Color(0xFF0F172A), fontWeight: FontWeight.w500)),
+                          ],
+                        ),
                       );
                     }).toList(),
                     onChanged: (val) {
-                      if (val != null) setState(() => _selectedZone = val);
+                      if (val != null) setState(() => _selectedCity = val);
                     },
                   ),
                 ),

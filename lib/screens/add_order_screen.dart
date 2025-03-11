@@ -17,30 +17,50 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
   final _formKey = GlobalKey<FormState>();
   final supabase = Supabase.instance.client;
 
-  String _deliveryType = 'Standard';
+  String _selectedVehicle = 'Moto';
+  String _selectedCity = 'Toutes les villes';
+  DateTime _selectedDeliveryDate = DateTime.now();
   final _customerNameController = TextEditingController();
   final _customerPhoneController = TextEditingController(text: '06');
   final _trackingNumberController = TextEditingController();
   final _parcelNumberController = TextEditingController();
   final _addressController = TextEditingController();
+  final _notesController = TextEditingController();
   final _amountController = TextEditingController(text: '150');
   final _driverFeeController = TextEditingController(text: '25'); // Gain du livreur
   
-  String _selectedCity = 'Casablanca';
   String? _selectedDriverId;
   List<Map<String, dynamic>> _drivers = [];
+  Set<String> _onlineDriverIds = {};
 
   bool _isLoadingDrivers = true;
   bool _isSubmitting = false;
 
-  final List<String> _deliveryTypes = ['Standard', 'Express', 'Même jour (Urgent)'];
+  final List<Map<String, dynamic>> _vehicleOptions = [
+    {'name': 'Tous', 'label': 'Tous', 'icon': Icons.all_inclusive_rounded},
+    {'name': 'Moto', 'label': 'Moto', 'icon': Icons.two_wheeler_rounded},
+    {'name': 'Vélo', 'label': 'Vélo', 'icon': Icons.pedal_bike_rounded},
+    {'name': 'Voiture', 'label': 'Voiture', 'icon': Icons.directions_car_rounded},
+    {'name': 'Fourgonnette', 'label': 'Van', 'icon': Icons.local_shipping_rounded},
+  ];
+
   final List<String> _cities = [
+    'Toutes les villes',
     'Casablanca',
     'Rabat',
     'Marrakech',
     'Tanger',
     'Fès',
     'Agadir',
+    'Meknès',
+    'Oujda',
+    'Kénitra',
+    'Tétouan',
+    'Salé',
+    'Mohammedia',
+    'El Jadida',
+    'Nador',
+    'Béni Mellal',
   ];
 
   @override
@@ -67,23 +87,182 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
 
   Future<void> _fetchDrivers() async {
     try {
-      final data = await supabase
-          .from('profiles')
-          .select('id, full_name, phone')
-          .eq('role', 'driver');
+      List<dynamic> data;
+      try {
+        data = await supabase
+            .from('profiles')
+            .select('id, full_name, phone, vehicle_type, zone, avatar_url, role, is_online, status')
+            .eq('role', 'driver');
+      } catch (_) {
+        data = await supabase
+            .from('profiles')
+            .select('id, full_name, phone, vehicle_type, zone, avatar_url, role')
+            .eq('role', 'driver');
+      }
+
+      final onlineIds = <String>{};
+      // Check profile is_online flag (persists even when app is closed)
+      for (final d in data) {
+        final dId = d['id'] as String?;
+        if (dId != null) {
+          if (d['is_online'] == true || d['status'] == 'online') {
+            onlineIds.add(dId);
+          }
+        }
+      }
+
+      try {
+        final locData = await supabase
+            .from('driver_locations')
+            .select('driver_id, updated_at');
+        final now = DateTime.now().toUtc();
+        for (final l in locData) {
+          final dId = l['driver_id'] as String?;
+          final updatedAtStr = l['updated_at'] as String?;
+          if (dId != null && updatedAtStr != null) {
+            final dt = DateTime.tryParse(updatedAtStr);
+            // Considered online if updated within last 20 minutes
+            if (dt != null && now.difference(dt.toUtc()).inMinutes.abs() < 20) {
+              onlineIds.add(dId);
+            }
+          }
+        }
+      } catch (_) {}
 
       if (mounted) {
         setState(() {
           _drivers = List<Map<String, dynamic>>.from(data);
-          if (_drivers.isNotEmpty) {
-            _selectedDriverId = _drivers.first['id'] as String;
-          }
+          _onlineDriverIds = onlineIds;
+          _syncSelectedDriverWithFilter();
           _isLoadingDrivers = false;
         });
       }
     } catch (_) {
       if (mounted) setState(() => _isLoadingDrivers = false);
     }
+  }
+
+  List<Map<String, dynamic>> get _filteredDrivers {
+    return _drivers.where((driver) {
+      // 1. Vehicle filter
+      if (_selectedVehicle != 'Tous') {
+        final v = DriverAvatarHelper.cleanVehicle(driver['vehicle_type']).toLowerCase();
+        final target = _selectedVehicle.toLowerCase();
+        bool match = false;
+        if (target.contains('moto') && v.contains('moto')) {
+          match = true;
+        } else if ((target.contains('vélo') || target.contains('velo')) &&
+            (v.contains('vélo') || v.contains('velo') || v.contains('bike'))) {
+          match = true;
+        } else if (target.contains('voiture') && (v.contains('voiture') || v.contains('car'))) {
+          match = true;
+        } else if (target.contains('fourgon') && (v.contains('fourgon') || v.contains('van'))) {
+          match = true;
+        } else if (v.contains(target) || target.contains(v)) {
+          match = true;
+        }
+        if (!match) return false;
+      }
+
+      // 2. City filter
+      if (_selectedCity != 'Toutes les villes') {
+        final z = DriverAvatarHelper.cleanZone(driver['zone']).toLowerCase();
+        final targetCity = _selectedCity.toLowerCase();
+        if (!z.contains(targetCity)) {
+          return false;
+        }
+      }
+
+      return true;
+    }).toList();
+  }
+
+  void _syncSelectedDriverWithFilter() {
+    final filtered = _filteredDrivers;
+    if (_selectedDriverId != null && !filtered.any((d) => d['id'] == _selectedDriverId)) {
+      _selectedDriverId = filtered.isNotEmpty ? (filtered.first['id'] as String) : null;
+    } else if (_selectedDriverId == null && filtered.isNotEmpty) {
+      _selectedDriverId = filtered.first['id'] as String;
+    }
+  }
+
+  Widget _buildQuickDateChip(String label, int addDays) {
+    final targetDate = DateTime.now().add(Duration(days: addDays));
+    final isSelected = _selectedDeliveryDate.year == targetDate.year &&
+        _selectedDeliveryDate.month == targetDate.month &&
+        _selectedDeliveryDate.day == targetDate.day;
+
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _selectedDeliveryDate = targetDate;
+        });
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? AmeexColors.primaryBlue : Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: isSelected ? AmeexColors.primaryBlue : const Color(0xFFE2E8F0),
+            width: isSelected ? 1.5 : 1.0,
+          ),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: AmeexColors.primaryBlue.withValues(alpha: 0.2),
+                    blurRadius: 4,
+                    offset: const Offset(0, 1),
+                  ),
+                ]
+              : null,
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.bold,
+            color: isSelected ? Colors.white : const Color(0xFF475569),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickDeliveryDate() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDeliveryDate,
+      firstDate: now.subtract(const Duration(days: 1)),
+      lastDate: now.add(const Duration(days: 90)),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: AmeexColors.primaryBlue,
+              onPrimary: Colors.white,
+              onSurface: AmeexColors.textDark,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (picked != null) {
+      setState(() {
+        _selectedDeliveryDate = picked;
+      });
+    }
+  }
+
+  String _formatDisplayDate(DateTime dt) {
+    const days = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+    const months = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc'];
+    final dayName = days[dt.weekday - 1];
+    final monthName = months[dt.month - 1];
+    return '$dayName ${dt.day} $monthName ${dt.year}';
   }
 
   Future<void> _submitOrder() async {
@@ -98,16 +277,21 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
           ? _parcelNumberController.text.trim()
           : _generateParcelNumber();
 
+      final effectiveCity = _selectedCity != 'Toutes les villes' ? _selectedCity : 'Casablanca';
       final String rawAddress = _addressController.text.trim().isEmpty 
-          ? '$_selectedCity Centre' 
+          ? '$effectiveCity Centre' 
           : _addressController.text.trim();
       final String addressWithParcel = ParcelHelper.formatWithParcel(rawAddress, parcelNumber);
+
+      final String notes = _notesController.text.trim();
+      final String formattedDeliveryDate =
+          '${_selectedDeliveryDate.year}-${_selectedDeliveryDate.month.toString().padLeft(2, '0')}-${_selectedDeliveryDate.day.toString().padLeft(2, '0')}';
 
       final Map<String, dynamic> insertPayload = {
         'tracking_number': _trackingNumberController.text.trim(),
         'customer_name': _customerNameController.text.trim(),
         'customer_phone': _customerPhoneController.text.trim(),
-        'destination_city': _selectedCity,
+        'destination_city': effectiveCity,
         'delivery_address': addressWithParcel,
         'amount': amount,
         'status': 'pending',
@@ -118,22 +302,32 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
       try {
         await supabase.from('orders').insert({
           ...insertPayload,
-          'delivery_type': _deliveryType,
+          'delivery_type': _selectedVehicle,
           'driver_fee': driverFee,
           'parcel_number': parcelNumber,
+          'delivery_date': formattedDeliveryDate,
+          'notes': notes.isNotEmpty ? notes : null,
         });
       } catch (_) {
         try {
           await supabase.from('orders').insert({
             ...insertPayload,
-            'delivery_type': _deliveryType,
+            'delivery_type': _selectedVehicle,
             'driver_fee': driverFee,
+            'parcel_number': parcelNumber,
           });
         } catch (_) {
-          // Fallback in case SQL columns delivery_type/driver_fee not yet added
+          final String extraInfo = [
+            'Véhicule: $_selectedVehicle',
+            'Ville: $effectiveCity',
+            'Date livraison: $formattedDeliveryDate',
+            if (notes.isNotEmpty) 'Remarques: $notes',
+            'Gain: $driverFee MAD',
+          ].join(' | ');
+
           await supabase.from('orders').insert({
             ...insertPayload,
-            'delivery_address': '$addressWithParcel [Type: $_deliveryType | Gain: ${driverFee} MAD]',
+            'delivery_address': '$addressWithParcel [$extraInfo]',
           });
         }
       }
@@ -170,6 +364,7 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
     _trackingNumberController.dispose();
     _parcelNumberController.dispose();
     _addressController.dispose();
+    _notesController.dispose();
     _amountController.dispose();
     _driverFeeController.dispose();
     super.dispose();
@@ -211,25 +406,141 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 1. Type de livraison
-              _buildLabel('Type de livraison'),
+              // 1. Type de véhicule requis (remplace Type de livraison)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _buildLabel('Type de véhicule requis'),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2.5),
+                    decoration: BoxDecoration(
+                      color: AmeexColors.primaryBlue.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: AmeexColors.primaryBlue.withValues(alpha: 0.2)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: const [
+                        Icon(Icons.filter_alt_rounded, size: 12, color: AmeexColors.primaryBlue),
+                        SizedBox(width: 4),
+                        Text(
+                          'Filtre automatique',
+                          style: TextStyle(color: AmeexColors.primaryBlue, fontSize: 10, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: _vehicleOptions.map((v) {
+                  final isSelected = _selectedVehicle == v['name'];
+                  return Expanded(
+                    child: GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _selectedVehicle = v['name'] as String;
+                          _syncSelectedDriverWithFilter();
+                        });
+                      },
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 180),
+                        margin: const EdgeInsets.symmetric(horizontal: 2.5),
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        decoration: BoxDecoration(
+                          color: isSelected ? AmeexColors.primaryBlue : Colors.white,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: isSelected ? AmeexColors.primaryBlue : const Color(0xFFE2E8F0),
+                            width: isSelected ? 1.5 : 1.0,
+                          ),
+                          boxShadow: isSelected
+                              ? [
+                                  BoxShadow(
+                                    color: AmeexColors.primaryBlue.withValues(alpha: 0.22),
+                                    blurRadius: 5,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ]
+                              : null,
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              v['icon'] as IconData,
+                              color: isSelected ? Colors.white : const Color(0xFF64748B),
+                              size: 20,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              v['label'] as String,
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: isSelected ? Colors.white : const Color(0xFF475569),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+
+              const SizedBox(height: 16),
+
+              // 1. bis Ville de livraison
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _buildLabel('Ville de livraison'),
+                  Text(
+                    'Filtre livreurs par ville',
+                    style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                  ),
+                ],
+              ),
               const SizedBox(height: 6),
               Container(
                 decoration: _fieldBoxDecoration(),
                 padding: const EdgeInsets.symmetric(horizontal: 14),
                 child: DropdownButtonHideUnderline(
                   child: DropdownButton<String>(
-                    value: _deliveryType,
+                    value: _selectedCity,
                     isExpanded: true,
                     icon: const Icon(Icons.keyboard_arrow_down, color: Colors.black54),
-                    items: _deliveryTypes.map((type) {
+                    items: _cities.map((city) {
                       return DropdownMenuItem(
-                        value: type,
-                        child: Text(type, style: const TextStyle(fontSize: 14, color: Color(0xFF0F172A))),
+                        value: city,
+                        child: Row(
+                          children: [
+                            Icon(
+                              city == 'Toutes les villes' ? Icons.map_rounded : Icons.location_city_rounded,
+                              size: 16,
+                              color: city == 'Toutes les villes' ? Colors.grey : AmeexColors.primaryBlue,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                city,
+                                style: const TextStyle(fontSize: 13, color: Color(0xFF0F172A), fontWeight: FontWeight.w500),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
                       );
                     }).toList(),
                     onChanged: (val) {
-                      if (val != null) setState(() => _deliveryType = val);
+                      if (val != null) {
+                        setState(() {
+                          _selectedCity = val;
+                          _syncSelectedDriverWithFilter();
+                        });
+                      }
                     },
                   ),
                 ),
@@ -319,28 +630,33 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
 
               const SizedBox(height: 16),
 
-              // 5. Ville de destination
-              _buildLabel('Ville de destination'),
-              const SizedBox(height: 6),
-              Container(
-                decoration: _fieldBoxDecoration(),
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    value: _selectedCity,
-                    isExpanded: true,
-                    icon: const Icon(Icons.keyboard_arrow_down, color: Colors.black54),
-                    items: _cities.map((city) {
-                      return DropdownMenuItem(
-                        value: city,
-                        child: Text(city, style: const TextStyle(fontSize: 14, color: Color(0xFF0F172A))),
-                      );
-                    }).toList(),
-                    onChanged: (val) {
-                      if (val != null) setState(() => _selectedCity = val);
-                    },
+              // 5. Ville choisie
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildLabel('Ville de livraison'),
+                        const SizedBox(height: 6),
+                        Container(
+                          decoration: _fieldBoxDecoration(),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.location_city_rounded, size: 18, color: AmeexColors.primaryBlue),
+                              const SizedBox(width: 8),
+                              Text(
+                                _selectedCity == 'Toutes les villes' ? 'Casablanca' : _selectedCity,
+                                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
+                ],
               ),
 
               const SizedBox(height: 16),
@@ -360,8 +676,112 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
 
               const SizedBox(height: 16),
 
-              // 7. Livreur assigné
-              _buildLabel('Livreur assigné'),
+              // 6. bis Date de livraison souhaitée (تاريخ التسليم)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _buildLabel('Date de livraison souhaitée'),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2.5),
+                    decoration: BoxDecoration(
+                      color: AmeexColors.primaryBlue.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      _formatDisplayDate(_selectedDeliveryDate),
+                      style: const TextStyle(
+                        color: AmeexColors.primaryBlue,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  _buildQuickDateChip('Aujourd\'hui', 0),
+                  const SizedBox(width: 6),
+                  _buildQuickDateChip('Demain', 1),
+                  const SizedBox(width: 6),
+                  _buildQuickDateChip('Après-demain', 2),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: InkWell(
+                      onTap: _pickDeliveryDate,
+                      borderRadius: BorderRadius.circular(10),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 8),
+                        decoration: BoxDecoration(
+                          color: AmeexColors.surfaceAlt,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                        ),
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.calendar_month_rounded, size: 16, color: AmeexColors.primaryBlue),
+                            SizedBox(width: 4),
+                            Text(
+                              'Autre date',
+                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AmeexColors.primaryBlue),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 16),
+
+              // 6. ter Remarques & Instructions spéciales (ملاحظات)
+              _buildLabel('Remarques & Instructions spéciales (ملاحظات)'),
+              const SizedBox(height: 6),
+              TextFormField(
+                controller: _notesController,
+                maxLines: 2,
+                style: const TextStyle(fontSize: 13, color: Color(0xFF0F172A)),
+                decoration: _inputDecoration(
+                  hint: 'Ex: Sonner à l\'interphone B, appeler avant d\'arriver, ne pas laisser chez le concierge...',
+                  prefixIcon: const Padding(
+                    padding: EdgeInsets.only(bottom: 22),
+                    child: Icon(Icons.sticky_note_2_outlined, size: 20, color: Colors.black45),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              // 7. Livreur assigné (Filtré dynamiquement)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _buildLabel('Livreur assigné'),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: _filteredDrivers.isEmpty ? const Color(0xFFFEE2E2) : const Color(0xFFDCFCE7),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: _filteredDrivers.isEmpty ? const Color(0xFFFCA5A5) : const Color(0xFF86EFAC),
+                      ),
+                    ),
+                    child: Text(
+                      _filteredDrivers.isEmpty
+                          ? '0 livreur correspondant'
+                          : '${_filteredDrivers.length} livreur(s) disponible(s)',
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.bold,
+                        color: _filteredDrivers.isEmpty ? const Color(0xFFB91C1C) : const Color(0xFF15803D),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
               const SizedBox(height: 6),
               _isLoadingDrivers
                   ? const LinearProgressIndicator(color: navyColor)
@@ -393,20 +813,39 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
                                     ],
                                   ),
                                 ),
-                                ..._drivers.map((driver) {
+                                ..._filteredDrivers.map((driver) {
                                   final name = driver['full_name'] ?? 'Livreur';
                                   final vehicle = DriverAvatarHelper.cleanVehicle(driver['vehicle_type']);
                                   final zone = DriverAvatarHelper.cleanZone(driver['zone']);
+                                  final isOnline = _onlineDriverIds.contains(driver['id']);
 
                                   return DropdownMenuItem<String?>(
                                     value: driver['id'] as String,
                                     child: Row(
                                       children: [
-                                        DriverAvatar(
-                                          driverData: driver,
-                                          radius: 16,
-                                          borderColor: AmeexColors.primaryBlue,
-                                          borderWidth: 1.5,
+                                        Stack(
+                                          clipBehavior: Clip.none,
+                                          children: [
+                                            DriverAvatar(
+                                              driverData: driver,
+                                              radius: 16,
+                                              borderColor: isOnline ? const Color(0xFF10B981) : AmeexColors.primaryBlue,
+                                              borderWidth: 1.5,
+                                            ),
+                                            Positioned(
+                                              bottom: 0,
+                                              right: 0,
+                                              child: Container(
+                                                width: 10,
+                                                height: 10,
+                                                decoration: BoxDecoration(
+                                                  shape: BoxShape.circle,
+                                                  color: isOnline ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                                                  border: Border.all(color: Colors.white, width: 2),
+                                                ),
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                         const SizedBox(width: 10),
                                         Expanded(
@@ -414,10 +853,46 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
                                             crossAxisAlignment: CrossAxisAlignment.start,
                                             mainAxisAlignment: MainAxisAlignment.center,
                                             children: [
-                                              Text(
-                                                name,
-                                                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
-                                                overflow: TextOverflow.ellipsis,
+                                              Row(
+                                                children: [
+                                                  Expanded(
+                                                    child: Text(
+                                                      name,
+                                                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                                                      overflow: TextOverflow.ellipsis,
+                                                    ),
+                                                  ),
+                                                  Container(
+                                                    margin: const EdgeInsets.only(left: 4),
+                                                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                                                    decoration: BoxDecoration(
+                                                      color: isOnline ? const Color(0xFFDCFCE7) : const Color(0xFFFEE2E2),
+                                                      borderRadius: BorderRadius.circular(4),
+                                                    ),
+                                                    child: Row(
+                                                      mainAxisSize: MainAxisSize.min,
+                                                      children: [
+                                                        Container(
+                                                          width: 6,
+                                                          height: 6,
+                                                          decoration: BoxDecoration(
+                                                            shape: BoxShape.circle,
+                                                            color: isOnline ? const Color(0xFF15803D) : const Color(0xFFDC2626),
+                                                          ),
+                                                        ),
+                                                        const SizedBox(width: 4),
+                                                        Text(
+                                                          isOnline ? 'En ligne' : 'Hors ligne',
+                                                          style: TextStyle(
+                                                            fontSize: 9.5,
+                                                            fontWeight: FontWeight.bold,
+                                                            color: isOnline ? const Color(0xFF15803D) : const Color(0xFFDC2626),
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                ],
                                               ),
                                               Text(
                                                 '$vehicle • $zone',
@@ -439,6 +914,30 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
                           ),
                         ),
 
+                        if (_filteredDrivers.isEmpty) ...[
+                          const SizedBox(height: 8),
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFFFBEB),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: const Color(0xFFFDE68A)),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.info_outline_rounded, color: Color(0xFFD97706), size: 18),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'Aucun livreur avec le véhicule "$_selectedVehicle" dans cette ville ($_selectedCity). Vous pouvez choisir "Tous" ou enregistrer la commande sans livreur.',
+                                    style: const TextStyle(fontSize: 11.5, color: Color(0xFF92400E)),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+
                         // Selected Driver Preview Card
                         if (_selectedDriverId != null) ...[
                           Builder(builder: (context) {
@@ -452,6 +951,7 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
                             final phone = selectedDriver['phone'] ?? '';
                             final vehicle = DriverAvatarHelper.cleanVehicle(selectedDriver['vehicle_type']);
                             final zone = DriverAvatarHelper.cleanZone(selectedDriver['zone']);
+                            final isOnline = _onlineDriverIds.contains(selectedDriver['id']);
 
                             return Container(
                               margin: const EdgeInsets.only(top: 10),
@@ -463,12 +963,30 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
                               ),
                               child: Row(
                                 children: [
-                                  DriverAvatar(
-                                    driverData: selectedDriver,
-                                    radius: 22,
-                                    borderColor: AmeexColors.primaryBlue,
-                                    borderWidth: 2,
-                                    showBadge: true,
+                                  Stack(
+                                    clipBehavior: Clip.none,
+                                    children: [
+                                      DriverAvatar(
+                                        driverData: selectedDriver,
+                                        radius: 22,
+                                        borderColor: isOnline ? const Color(0xFF10B981) : AmeexColors.primaryBlue,
+                                        borderWidth: 2,
+                                        showBadge: true,
+                                      ),
+                                      Positioned(
+                                        bottom: 0,
+                                        right: 0,
+                                        child: Container(
+                                          width: 12,
+                                          height: 12,
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            color: isOnline ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                                            border: Border.all(color: Colors.white, width: 2),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                   const SizedBox(width: 12),
                                   Expanded(
@@ -493,11 +1011,41 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
                                                 style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                                               ),
                                             ),
+                                            const SizedBox(width: 6),
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                                              decoration: BoxDecoration(
+                                                color: isOnline ? const Color(0xFFDCFCE7) : const Color(0xFFFEE2E2),
+                                                borderRadius: BorderRadius.circular(6),
+                                              ),
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Container(
+                                                    width: 6,
+                                                    height: 6,
+                                                    decoration: BoxDecoration(
+                                                      shape: BoxShape.circle,
+                                                      color: isOnline ? const Color(0xFF15803D) : const Color(0xFFDC2626),
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 4),
+                                                  Text(
+                                                    isOnline ? 'En ligne' : 'Hors ligne',
+                                                    style: TextStyle(
+                                                      fontSize: 10,
+                                                      fontWeight: FontWeight.bold,
+                                                      color: isOnline ? const Color(0xFF15803D) : const Color(0xFFDC2626),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
                                           ],
                                         ),
                                         const SizedBox(height: 2),
                                         Text(
-                                          'Zone : $zone • 📞 $phone',
+                                          'Ville : $zone • 📞 $phone',
                                           style: const TextStyle(fontSize: 11, color: Color(0xFF475569)),
                                         ),
                                       ],
