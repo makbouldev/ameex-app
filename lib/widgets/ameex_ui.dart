@@ -29,7 +29,7 @@ class _AmeexAnimatedNumberState extends State<AmeexAnimatedNumber>
     with SingleTickerProviderStateMixin {
   late AnimationController _ctrl;
   late Animation<double> _anim;
-  double _oldValue = 0;
+  double _displayValue = 0;
 
   @override
   void initState() {
@@ -38,17 +38,20 @@ class _AmeexAnimatedNumberState extends State<AmeexAnimatedNumber>
     _anim = Tween<double>(begin: 0, end: widget.value).animate(
       CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic),
     );
+    _displayValue = widget.value;
     _ctrl.forward();
   }
 
   @override
   void didUpdateWidget(AmeexAnimatedNumber oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.value != widget.value) {
-      _oldValue = oldWidget.value;
-      _anim = Tween<double>(begin: _oldValue, end: widget.value).animate(
+    // Only re-animate on meaningful changes (not every stream tick).
+    // Avoids CPU churn when StreamBuilder rebuilds with same value.
+    if ((oldWidget.value - widget.value).abs() > 0.01) {
+      _anim = Tween<double>(begin: _displayValue, end: widget.value).animate(
         CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic),
       );
+      _displayValue = widget.value;
       _ctrl.forward(from: 0);
     }
   }
@@ -220,7 +223,7 @@ class _AmeexSplashState extends State<AmeexSplash>
     super.initState();
     _ctrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 2000),
+      duration: const Duration(milliseconds: 1800),
     )..repeat();
   }
 
@@ -238,66 +241,54 @@ class _AmeexSplashState extends State<AmeexSplash>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Pulsing brand mark — rings + core
             SizedBox(
               width: 120, height: 120,
               child: Stack(
                 alignment: Alignment.center,
                 children: [
-                  // Two expanding rings offset in phase
-                  for (int i = 0; i < 2; i++)
-                    AnimatedBuilder(
-                      animation: _ctrl,
-                      builder: (context, _) {
-                        final phase = (_ctrl.value + i * 0.5) % 1.0;
-                        final size = 44 + (72 * phase);
-                        final opacity = (1 - phase).clamp(0.0, 1.0) * 0.45;
-                        return Container(
-                          width: size,
-                          height: size,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: AmeexColors.primaryBlue
-                                  .withValues(alpha: opacity),
-                              width: 1.4,
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  // Inner core with subtle breathing scale
+                  // Single expanding ring (half the CPU of two)
                   AnimatedBuilder(
                     animation: _ctrl,
-                    builder: (context, child) {
-                      final s = 0.92 + 0.08 *
-                          ((_ctrl.value * 2 * 3.14159).remainder(6.28318) < 3.14159
-                              ? 1 - (_ctrl.value - 0.25).abs() * 2
-                              : (_ctrl.value - 0.75).abs() * 2);
-                      return Transform.scale(scale: s.clamp(0.9, 1.0), child: child);
-                    },
-                    child: Container(
-                      width: 44, height: 44,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: const LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            Color(0xFF1E3A8A),
-                            AmeexColors.primaryBlue,
-                            AmeexColors.darkNavy,
-                          ],
-                        ),
-                        boxShadow: AmeexDesign.shadowHero,
-                      ),
-                      alignment: Alignment.center,
-                      child: Container(
-                        width: 14, height: 14,
+                    builder: (context, _) {
+                      final t = _ctrl.value;
+                      final size = 44 + (72 * t);
+                      final opacity = (1 - t).clamp(0.0, 1.0) * 0.45;
+                      return Container(
+                        width: size,
+                        height: size,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: Colors.white.withValues(alpha: 0.9),
+                          border: Border.all(
+                            color: AmeexColors.primaryBlue
+                                .withValues(alpha: opacity),
+                            width: 1.4,
+                          ),
                         ),
+                      );
+                    },
+                  ),
+                  // Static core (no scale animation)
+                  Container(
+                    width: 44, height: 44,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: const LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          Color(0xFF1E3A8A),
+                          AmeexColors.primaryBlue,
+                          AmeexColors.darkNavy,
+                        ],
+                      ),
+                      boxShadow: AmeexDesign.shadowHero,
+                    ),
+                    alignment: Alignment.center,
+                    child: Container(
+                      width: 14, height: 14,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white.withValues(alpha: 0.9),
                       ),
                     ),
                   ),

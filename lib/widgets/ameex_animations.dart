@@ -41,118 +41,34 @@ class AmeexPageTransitionsBuilder extends PageTransitionsBuilder {
   }
 }
 
-/// Helper to push screens with a premium Ameex page animation.
-/// Includes a brief brand loading overlay that fades out as the new
-/// page fades in — gives a polished "loading between pages" feel.
+/// Fast, premium Ameex page transition — quick fade + subtle slide.
+/// Short enough that clicks feel instant.
 class AmeexPageRoute<T> extends PageRouteBuilder<T> {
   final Widget page;
 
   AmeexPageRoute({required this.page, super.settings})
       : super(
           pageBuilder: (context, animation, secondaryAnimation) => page,
-          transitionDuration: const Duration(milliseconds: 520),
-          reverseTransitionDuration: const Duration(milliseconds: 280),
+          transitionDuration: const Duration(milliseconds: 220),
+          reverseTransitionDuration: const Duration(milliseconds: 180),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            // Page itself fades/slides in during the second half
-            final pageCurve = CurvedAnimation(
+            final curved = CurvedAnimation(
               parent: animation,
-              curve: const Interval(0.35, 1.0, curve: Curves.easeOutCubic),
+              curve: Curves.easeOutCubic,
               reverseCurve: Curves.easeInCubic,
             );
-            // Loading overlay is opaque at start, fades out as page comes in
-            final overlayCurve = CurvedAnimation(
-              parent: animation,
-              curve: const Interval(0.0, 0.55, curve: Curves.easeOut),
-            );
-
-            return Stack(
-              children: [
-                FadeTransition(
-                  opacity: pageCurve,
-                  child: SlideTransition(
-                    position: Tween<Offset>(
-                      begin: const Offset(0.0, 0.025),
-                      end: Offset.zero,
-                    ).animate(pageCurve),
-                    child: child,
-                  ),
-                ),
-                IgnorePointer(
-                  child: FadeTransition(
-                    opacity: Tween<double>(begin: 1.0, end: 0.0).animate(overlayCurve),
-                    child: Container(
-                      color: const Color(0xFFF7F8FA),
-                      alignment: Alignment.center,
-                      child: const _TransitionLoader(),
-                    ),
-                  ),
-                ),
-              ],
+            return FadeTransition(
+              opacity: curved,
+              child: SlideTransition(
+                position: Tween<Offset>(
+                  begin: const Offset(0.0, 0.015),
+                  end: Offset.zero,
+                ).animate(curved),
+                child: child,
+              ),
             );
           },
         );
-}
-
-/// Private 3-dot brand loader used inside the page transition overlay.
-/// (Kept here to avoid a circular import with ameex_ui.dart.)
-class _TransitionLoader extends StatefulWidget {
-  const _TransitionLoader();
-
-  @override
-  State<_TransitionLoader> createState() => _TransitionLoaderState();
-}
-
-class _TransitionLoaderState extends State<_TransitionLoader>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _ctrl;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1200),
-    )..repeat();
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    const brand = Color(0xFF14307A);
-    return SizedBox(
-      width: 60,
-      height: 24,
-      child: AnimatedBuilder(
-        animation: _ctrl,
-        builder: (context, _) {
-          return Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: List.generate(3, (i) {
-              final phase = (_ctrl.value + i * 0.2) % 1.0;
-              final t = (phase < 0.5 ? phase * 2 : (1 - phase) * 2).clamp(0.0, 1.0);
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 3),
-                child: Container(
-                  width: 8,
-                  height: 8,
-                  decoration: BoxDecoration(
-                    color: brand.withValues(alpha: 0.3 + 0.7 * t),
-                    shape: BoxShape.circle,
-                  ),
-                ),
-              );
-            }),
-          );
-        },
-      ),
-    );
-  }
 }
 
 /// 2. ANIMATED INDEXED STACK (Preserves OSM map state while animating tab switches)
