@@ -1,6 +1,118 @@
 import 'package:flutter/material.dart';
 import '../theme/ameex_theme.dart';
 
+/// Shimmer skeleton block — rectangular placeholder that pulses
+/// to signal "loading real data from the server".
+class AmeexSkeleton extends StatefulWidget {
+  final double? width;
+  final double height;
+  final double radius;
+  final EdgeInsetsGeometry margin;
+
+  const AmeexSkeleton({
+    super.key,
+    this.width,
+    this.height = 14,
+    this.radius = 8,
+    this.margin = EdgeInsets.zero,
+  });
+
+  @override
+  State<AmeexSkeleton> createState() => _AmeexSkeletonState();
+}
+
+class _AmeexSkeletonState extends State<AmeexSkeleton>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1400),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: widget.margin,
+      child: AnimatedBuilder(
+        animation: _ctrl,
+        builder: (context, _) {
+          final t = _ctrl.value;
+          return Container(
+            width: widget.width,
+            height: widget.height,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(widget.radius),
+              gradient: LinearGradient(
+                begin: Alignment(-1 + 2 * t, 0),
+                end: Alignment(1 + 2 * t, 0),
+                colors: const [
+                  Color(0xFFEDEEF2),
+                  Color(0xFFF6F7F9),
+                  Color(0xFFEDEEF2),
+                ],
+                stops: const [0.0, 0.5, 1.0],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+/// Wraps content with a minimum loading duration so the app feels
+/// like it's fetching real server data on first mount.
+/// After [minDuration] AND the child is ready, child is shown.
+class AmeexInitialLoad extends StatefulWidget {
+  final Widget skeleton;
+  final Widget child;
+  final Duration minDuration;
+
+  const AmeexInitialLoad({
+    super.key,
+    required this.skeleton,
+    required this.child,
+    this.minDuration = const Duration(seconds: 3),
+  });
+
+  @override
+  State<AmeexInitialLoad> createState() => _AmeexInitialLoadState();
+}
+
+class _AmeexInitialLoadState extends State<AmeexInitialLoad> {
+  bool _ready = false;
+
+  @override
+  void initState() {
+    super.initState();
+    Future.delayed(widget.minDuration, () {
+      if (mounted) setState(() => _ready = true);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 320),
+      switchInCurve: Curves.easeOutCubic,
+      child: _ready
+          ? KeyedSubtree(key: const ValueKey('ready'), child: widget.child)
+          : KeyedSubtree(key: const ValueKey('loading'), child: widget.skeleton),
+    );
+  }
+}
+
 /// Animated number counter — eases from 0 to target.
 /// Gives the "real app" feel, especially on KPIs and balances.
 class AmeexAnimatedNumber extends StatefulWidget {

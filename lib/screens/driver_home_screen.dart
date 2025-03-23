@@ -3231,12 +3231,18 @@ class _DriverEarningsTabState extends State<DriverEarningsTab> {
           ),
         ),
       ),
-      body: StreamBuilder<List<Map<String, dynamic>>>(
+      body: AmeexInitialLoad(
+        minDuration: const Duration(seconds: 3),
+        skeleton: _buildRevenusSkeleton(),
+        child: StreamBuilder<List<Map<String, dynamic>>>(
         stream: supabase
             .from('orders')
             .stream(primaryKey: ['id'])
             .eq('assigned_driver_id', user?.id ?? ''),
         builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
+            return _buildRevenusSkeleton();
+          }
           final orders = snapshot.data ?? [];
           final balances = CaisseRemittanceHelper.calculateBalances(orders);
 
@@ -3583,6 +3589,150 @@ class _DriverEarningsTabState extends State<DriverEarningsTab> {
             ),
           );
         },
+      ),
+      ),
+    );
+  }
+
+  Widget _buildRevenusSkeleton() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Wallet skeleton
+          Container(
+            height: 280,
+            padding: const EdgeInsets.all(22),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(22),
+              boxShadow: AmeexDesign.shadowCard,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: const [
+                    AmeexSkeleton(width: 140, height: 12, radius: 6),
+                    AmeexSkeleton(width: 40, height: 12, radius: 6),
+                  ],
+                ),
+                const SizedBox(height: 28),
+                const AmeexSkeleton(width: 200, height: 40, radius: 10),
+                const SizedBox(height: 12),
+                const AmeexSkeleton(width: 160, height: 12, radius: 6),
+                const SizedBox(height: 22),
+                Row(
+                  children: const [
+                    Expanded(flex: 3, child: AmeexSkeleton(height: 46, radius: 13)),
+                    SizedBox(width: 10),
+                    Expanded(flex: 2, child: AmeexSkeleton(height: 46, radius: 13)),
+                  ],
+                ),
+                const Spacer(),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: const [
+                    AmeexSkeleton(width: 60, height: 32, radius: 8),
+                    AmeexSkeleton(width: 60, height: 32, radius: 8),
+                    AmeexSkeleton(width: 80, height: 32, radius: 8),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          // Caisse row skeleton
+          Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: AmeexDesign.shadowCard,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: const [
+                    AmeexSkeleton(width: 36, height: 36, radius: 10),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          AmeexSkeleton(width: 120, height: 14, radius: 6),
+                          SizedBox(height: 6),
+                          AmeexSkeleton(width: 160, height: 11, radius: 6),
+                        ],
+                      ),
+                    ),
+                    AmeexSkeleton(width: 60, height: 20, radius: 6),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                const AmeexSkeleton(width: double.infinity, height: 4, radius: 999),
+                const SizedBox(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: const [
+                    AmeexSkeleton(width: 80, height: 11, radius: 6),
+                    AmeexSkeleton(width: 120, height: 11, radius: 6),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 28),
+          const AmeexSkeleton(width: 140, height: 17, radius: 6),
+          const SizedBox(height: 12),
+          SizedBox(
+            height: 36,
+            child: Row(
+              children: const [
+                AmeexSkeleton(width: 90, height: 32, radius: 999),
+                SizedBox(width: 8),
+                AmeexSkeleton(width: 100, height: 32, radius: 999),
+                SizedBox(width: 8),
+                AmeexSkeleton(width: 100, height: 32, radius: 999),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          ...List.generate(3, (_) => Container(
+            margin: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(18),
+              boxShadow: AmeexDesign.shadowCard,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: const [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          AmeexSkeleton(width: 140, height: 14, radius: 6),
+                          SizedBox(height: 7),
+                          AmeexSkeleton(width: 80, height: 11, radius: 6),
+                        ],
+                      ),
+                    ),
+                    AmeexSkeleton(width: 70, height: 22, radius: 999),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                const AmeexSkeleton(width: double.infinity, height: 50, radius: 12),
+              ],
+            ),
+          )),
+        ],
       ),
     );
   }

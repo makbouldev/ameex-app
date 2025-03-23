@@ -181,14 +181,17 @@ class _AdminDashboardHomeTabState extends State<AdminDashboardHomeTab> {
           );
         },
       ),
-      body: StreamBuilder<List<Map<String, dynamic>>>(
+      body: AmeexInitialLoad(
+        minDuration: const Duration(seconds: 3),
+        skeleton: _buildDashboardSkeleton(),
+        child: StreamBuilder<List<Map<String, dynamic>>>(
         stream: supabase
             .from('orders')
             .stream(primaryKey: ['id'])
             .order('created_at', ascending: false),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
-            return const Center(child: AmeexLoading());
+            return _buildDashboardSkeleton();
           }
 
           final orders = snapshot.data ?? [];
@@ -392,6 +395,188 @@ class _AdminDashboardHomeTabState extends State<AdminDashboardHomeTab> {
             ],
           );
         },
+      ),
+      ),
+    );
+  }
+
+  /// Full-screen skeleton shown for first 3s + while waiting for stream.
+  Widget _buildDashboardSkeleton() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const AmeexSkeleton(width: 140, height: 12, radius: 6),
+          const SizedBox(height: 12),
+          const AmeexSkeleton(width: 220, height: 26, radius: 8),
+          const SizedBox(height: 8),
+          const AmeexSkeleton(width: 180, height: 12, radius: 6),
+          const SizedBox(height: 22),
+
+          // Hero card skeleton
+          Container(
+            height: 230,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(22),
+              boxShadow: AmeexDesign.shadowCard,
+            ),
+            padding: const EdgeInsets.all(22),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: const [
+                    AmeexSkeleton(width: 140, height: 12, radius: 6),
+                    AmeexSkeleton(width: 40, height: 12, radius: 6),
+                  ],
+                ),
+                const SizedBox(height: 28),
+                const AmeexSkeleton(width: 180, height: 36, radius: 10),
+                const SizedBox(height: 10),
+                const AmeexSkeleton(width: 140, height: 12, radius: 6),
+                const Spacer(),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: const [
+                    AmeexSkeleton(width: 60, height: 32, radius: 8),
+                    AmeexSkeleton(width: 60, height: 32, radius: 8),
+                    AmeexSkeleton(width: 60, height: 32, radius: 8),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+
+          // Data strip skeleton
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: AmeexDesign.shadowCard,
+            ),
+            child: Row(
+              children: List.generate(4, (i) {
+                return Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.only(right: i < 3 ? 12 : 0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: const [
+                        AmeexSkeleton(width: 40, height: 10, radius: 4),
+                        SizedBox(height: 8),
+                        AmeexSkeleton(width: 48, height: 20, radius: 6),
+                        SizedBox(height: 8),
+                        AmeexSkeleton(width: double.infinity, height: 22, radius: 6),
+                      ],
+                    ),
+                  ),
+                );
+              }),
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // Drivers section skeleton
+          const AmeexSkeleton(width: 160, height: 18, radius: 6),
+          const SizedBox(height: 14),
+          SizedBox(
+            height: 168,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: 3,
+              separatorBuilder: (_, __) => const SizedBox(width: 12),
+              itemBuilder: (_, __) => Container(
+                width: 260,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: AmeexDesign.shadowCard,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: const [
+                        AmeexSkeleton(width: 42, height: 42, radius: 999),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              AmeexSkeleton(width: 120, height: 14, radius: 6),
+                              SizedBox(height: 6),
+                              AmeexSkeleton(width: 80, height: 11, radius: 6),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    Row(
+                      children: const [
+                        AmeexSkeleton(width: 80, height: 30, radius: 10),
+                        SizedBox(width: 10),
+                        AmeexSkeleton(width: 80, height: 30, radius: 10),
+                      ],
+                    ),
+                    const Spacer(),
+                    const AmeexSkeleton(width: 160, height: 12, radius: 6),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 28),
+
+          // Section header
+          const AmeexSkeleton(width: 180, height: 17, radius: 6),
+          const SizedBox(height: 14),
+          const AmeexSkeleton(width: double.infinity, height: 48, radius: 14),
+          const SizedBox(height: 16),
+
+          // Order list skeleton
+          ...List.generate(3, (_) => Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: AmeexDesign.shadowCard,
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const AmeexSkeleton(width: 42, height: 42, radius: 999),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: const [
+                      AmeexSkeleton(width: 140, height: 14, radius: 6),
+                      SizedBox(height: 7),
+                      AmeexSkeleton(width: 180, height: 11, radius: 6),
+                    ],
+                  ),
+                ),
+                const Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    AmeexSkeleton(width: 60, height: 16, radius: 6),
+                    SizedBox(height: 10),
+                    AmeexSkeleton(width: 54, height: 20, radius: 999),
+                  ],
+                ),
+              ],
+            ),
+          )),
+        ],
       ),
     );
   }
