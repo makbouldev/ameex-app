@@ -1399,14 +1399,17 @@ class _AdminOrdersTabState extends State<AdminOrdersTab> {
           ),
         ),
       ),
-      body: StreamBuilder<List<Map<String, dynamic>>>(
+      body: AmeexInitialLoad(
+        minDuration: const Duration(seconds: 3),
+        skeleton: _buildOrdersSkeleton(),
+        child: StreamBuilder<List<Map<String, dynamic>>>(
         stream: supabase
             .from('orders')
             .stream(primaryKey: ['id'])
             .order('created_at', ascending: false),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: AmeexLoading());
+            return _buildOrdersSkeleton();
           }
 
           final orders = snapshot.data ?? [];
@@ -1475,6 +1478,72 @@ class _AdminOrdersTabState extends State<AdminOrdersTab> {
           );
         },
       ),
+      ),
+    );
+  }
+
+  Widget _buildOrdersSkeleton() {
+    return Column(
+      children: [
+        // Filter pills row
+        Container(
+          height: 54,
+          color: Colors.white,
+          padding: const EdgeInsets.fromLTRB(20, 10, 20, 10),
+          child: Row(
+            children: const [
+              AmeexSkeleton(width: 80, height: 32, radius: 999),
+              SizedBox(width: 8),
+              AmeexSkeleton(width: 100, height: 32, radius: 999),
+              SizedBox(width: 8),
+              AmeexSkeleton(width: 110, height: 32, radius: 999),
+              SizedBox(width: 8),
+              AmeexSkeleton(width: 90, height: 32, radius: 999),
+            ],
+          ),
+        ),
+        const Divider(height: 1, color: AmeexColors.divider),
+        Expanded(
+          child: ListView.builder(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+            itemCount: 6,
+            itemBuilder: (_, __) => Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: AmeexDesign.shadowCard,
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const AmeexSkeleton(width: 42, height: 42, radius: 999),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: const [
+                        AmeexSkeleton(width: 140, height: 14, radius: 6),
+                        SizedBox(height: 8),
+                        AmeexSkeleton(width: 180, height: 11, radius: 6),
+                      ],
+                    ),
+                  ),
+                  const Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      AmeexSkeleton(width: 60, height: 16, radius: 6),
+                      SizedBox(height: 10),
+                      AmeexSkeleton(width: 54, height: 20, radius: 999),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -2244,12 +2313,18 @@ class AdminNotificationsTab extends StatelessWidget {
           ),
         ),
       ),
-      body: StreamBuilder<List<Map<String, dynamic>>>(
+      body: AmeexInitialLoad(
+        minDuration: const Duration(seconds: 3),
+        skeleton: _notificationsSkeleton(),
+        child: StreamBuilder<List<Map<String, dynamic>>>(
         stream: supabase
             .from('orders')
             .stream(primaryKey: ['id'])
             .order('updated_at', ascending: false),
         builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
+            return _notificationsSkeleton();
+          }
           final orders = snapshot.data ?? [];
 
           // Show notifications of delivered, cancelled (with motif), or in_transit
@@ -2346,6 +2421,40 @@ class AdminNotificationsTab extends StatelessWidget {
           );
         },
       ),
+      ),
+    );
+  }
+
+  Widget _notificationsSkeleton() {
+    return ListView.separated(
+      padding: const EdgeInsets.all(16),
+      itemCount: 5,
+      separatorBuilder: (_, __) => const SizedBox(height: 10),
+      itemBuilder: (_, __) => Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: AmeexDesign.shadowCard,
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const AmeexSkeleton(width: 38, height: 38, radius: 999),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: const [
+                  AmeexSkeleton(width: 220, height: 14, radius: 6),
+                  SizedBox(height: 8),
+                  AmeexSkeleton(width: double.infinity, height: 11, radius: 6),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -2398,7 +2507,10 @@ class AdminProfileTab extends StatelessWidget {
           ),
         ],
       ),
-      body: SingleChildScrollView(
+      body: AmeexInitialLoad(
+        minDuration: const Duration(seconds: 3),
+        skeleton: _profileSkeleton(),
+        child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -2795,6 +2907,82 @@ class AdminProfileTab extends StatelessWidget {
             const SizedBox(height: 30),
           ],
         ),
+      ),
+      ),
+    );
+  }
+
+  Widget _profileSkeleton() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            height: 160,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(22),
+              boxShadow: AmeexDesign.shadowCard,
+            ),
+            padding: const EdgeInsets.all(20),
+            child: Row(
+              children: [
+                const AmeexSkeleton(width: 58, height: 58, radius: 999),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: const [
+                      AmeexSkeleton(width: 100, height: 11, radius: 6),
+                      SizedBox(height: 10),
+                      AmeexSkeleton(width: 160, height: 20, radius: 6),
+                      SizedBox(height: 8),
+                      AmeexSkeleton(width: 140, height: 12, radius: 6),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 22),
+          const AmeexSkeleton(width: double.infinity, height: 52, radius: 14),
+          const SizedBox(height: 28),
+          const AmeexSkeleton(width: 180, height: 17, radius: 6),
+          const SizedBox(height: 14),
+          ...List.generate(3, (_) => Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(18),
+              boxShadow: AmeexDesign.shadowCard,
+            ),
+            child: Column(
+              children: [
+                Row(
+                  children: const [
+                    AmeexSkeleton(width: 44, height: 44, radius: 999),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          AmeexSkeleton(width: 140, height: 14, radius: 6),
+                          SizedBox(height: 8),
+                          AmeexSkeleton(width: 120, height: 11, radius: 6),
+                        ],
+                      ),
+                    ),
+                    AmeexSkeleton(width: 36, height: 36, radius: 999),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                const AmeexSkeleton(width: double.infinity, height: 12, radius: 6),
+              ],
+            ),
+          )),
+        ],
       ),
     );
   }
