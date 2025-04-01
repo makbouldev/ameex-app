@@ -76,16 +76,17 @@ BEGIN
     ('AMX80010BCD', 'Souad El Ouali',       '0664440010', 'Agadir',     'Talborjt, Av Prince Moulay',           305, 25, 'pending', null, null, null, now() - interval '15 min', now() - interval '15 min'),
 
     -- ========================================================================
-    -- ACCEPTED / WAITING AGENCY (8 new) — driver accepted, parcel not picked up yet
+    -- ACCEPTED / WAITING AGENCY (8 new) — status='pending' + marker in address
+    -- (UI derives "accepted" state from the ETAT marker, enum has no 'accepted')
     -- ========================================================================
-    ('AMX90001ABC', 'Rachida Ouazzani',     '0665550001', 'Casablanca', 'Maarif, Rue de Verdun [ETAT: ACCEPTE_ATTENTE_AGENCE]',        320, 25, 'accepted', d2,  null, null, now() - interval '1 hour',  now() - interval '1 hour'),
-    ('AMX90002DEF', 'Brahim Chakir',        '0665550002', 'Casablanca', 'Anfa, Rue Ibnou Khaldoune [ETAT: ACCEPTE_ATTENTE_AGENCE]',    405, 30, 'accepted', d3,  null, null, now() - interval '2 hour',  now() - interval '2 hour'),
-    ('AMX90003GHI', 'Ghita Bouchentouf',    '0665550003', 'Rabat',      'Agdal, Rue Ibn Sina [ETAT: ACCEPTE_ATTENTE_AGENCE]',          385, 30, 'accepted', d5,  null, null, now() - interval '2 hour',  now() - interval '2 hour'),
-    ('AMX90004JKL', 'Hamid Senhaji',        '0665550004', 'Marrakech',  'Gueliz, Av Yacoub El Mansour [ETAT: ACCEPTE_ATTENTE_AGENCE]', 255, 25, 'accepted', d7,  null, null, now() - interval '3 hour',  now() - interval '3 hour'),
-    ('AMX90005MNO', 'Widad El Alami',       '0665550005', 'Marrakech',  'Hivernage, Rue Harroun Rachid [ETAT: ACCEPTE_ATTENTE_AGENCE]',370, 30, 'accepted', d6,  null, null, now() - interval '1 hour',  now() - interval '1 hour'),
-    ('AMX90006PQR', 'Othman Lahlou',        '0665550006', 'Tanger',     'Centre, Rue de Hollande [ETAT: ACCEPTE_ATTENTE_AGENCE]',      345, 30, 'accepted', d8,  null, null, now() - interval '2 hour',  now() - interval '2 hour'),
-    ('AMX90007STU', 'Naima Idrissi',        '0665550007', 'Fès',        'Narjiss, Bd Mohammed V [ETAT: ACCEPTE_ATTENTE_AGENCE]',       265, 25, 'accepted', d9,  null, null, now() - interval '3 hour',  now() - interval '3 hour'),
-    ('AMX90008VWX', 'Youssef Rachidi',      '0665550008', 'Agadir',     'Centre, Rue Oued Souss [ETAT: ACCEPTE_ATTENTE_AGENCE]',       290, 25, 'accepted', d10, null, null, now() - interval '1 hour',  now() - interval '1 hour'),
+    ('AMX90001ABC', 'Rachida Ouazzani',     '0665550001', 'Casablanca', 'Maarif, Rue de Verdun [ETAT: ACCEPTE_ATTENTE_AGENCE]',        320, 25, 'pending', d2,  null, null, now() - interval '1 hour',  now() - interval '1 hour'),
+    ('AMX90002DEF', 'Brahim Chakir',        '0665550002', 'Casablanca', 'Anfa, Rue Ibnou Khaldoune [ETAT: ACCEPTE_ATTENTE_AGENCE]',    405, 30, 'pending', d3,  null, null, now() - interval '2 hour',  now() - interval '2 hour'),
+    ('AMX90003GHI', 'Ghita Bouchentouf',    '0665550003', 'Rabat',      'Agdal, Rue Ibn Sina [ETAT: ACCEPTE_ATTENTE_AGENCE]',          385, 30, 'pending', d5,  null, null, now() - interval '2 hour',  now() - interval '2 hour'),
+    ('AMX90004JKL', 'Hamid Senhaji',        '0665550004', 'Marrakech',  'Gueliz, Av Yacoub El Mansour [ETAT: ACCEPTE_ATTENTE_AGENCE]', 255, 25, 'pending', d7,  null, null, now() - interval '3 hour',  now() - interval '3 hour'),
+    ('AMX90005MNO', 'Widad El Alami',       '0665550005', 'Marrakech',  'Hivernage, Rue Harroun Rachid [ETAT: ACCEPTE_ATTENTE_AGENCE]',370, 30, 'pending', d6,  null, null, now() - interval '1 hour',  now() - interval '1 hour'),
+    ('AMX90006PQR', 'Othman Lahlou',        '0665550006', 'Tanger',     'Centre, Rue de Hollande [ETAT: ACCEPTE_ATTENTE_AGENCE]',      345, 30, 'pending', d8,  null, null, now() - interval '2 hour',  now() - interval '2 hour'),
+    ('AMX90007STU', 'Naima Idrissi',        '0665550007', 'Fès',        'Narjiss, Bd Mohammed V [ETAT: ACCEPTE_ATTENTE_AGENCE]',       265, 25, 'pending', d9,  null, null, now() - interval '3 hour',  now() - interval '3 hour'),
+    ('AMX90008VWX', 'Youssef Rachidi',      '0665550008', 'Agadir',     'Centre, Rue Oued Souss [ETAT: ACCEPTE_ATTENTE_AGENCE]',       290, 25, 'pending', d10, null, null, now() - interval '1 hour',  now() - interval '1 hour'),
 
     -- ========================================================================
     -- CANCELLED (7 new) — with and without compensation motif
