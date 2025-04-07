@@ -1,9 +1,9 @@
 -- ============================================================================
 -- FIX: Purge bulky base64 data from auth.users & public.profiles
--- This fixes the "400 Request Header Or Cookie Too Large" error permanently.
+-- Safe script without 'avatar_url' column on public.profiles
 -- ============================================================================
 
--- 1. Clean the admin user metadata (remove bloated base64 avatar and zone)
+-- 1. Tne9iya dyal metadata l'admin mn base64 l'kbir
 UPDATE auth.users
 SET raw_user_meta_data = jsonb_build_object(
     'full_name', coalesce(raw_user_meta_data->>'full_name', 'Noureddine Makboul'),
@@ -13,21 +13,17 @@ SET raw_user_meta_data = jsonb_build_object(
 WHERE email = 'noureddinemakboul03@gmail.com'
    OR raw_user_meta_data::text LIKE '%data:image%';
 
--- 2. Clean all other users in auth.users that might have base64 in metadata
+-- 2. Tne9iya dyal ga3 l'comptes li fihom tsawer base64
 UPDATE auth.users
 SET raw_user_meta_data = (raw_user_meta_data - 'avatar_url') - 'zone'
 WHERE raw_user_meta_data::text LIKE '%data:image%';
 
--- 3. Clean any base64 images stored in public.profiles table
+-- 3. Tne9iya dyal zone f table profiles (ila kan fiha base64)
 UPDATE public.profiles
 SET zone = regexp_replace(zone, '\s*\[AVATAR:data:image[^\]]+\]', '', 'g')
 WHERE zone LIKE '%data:image%';
 
-UPDATE public.profiles
-SET avatar_url = 'https://ui-avatars.com/api/?name=Livreur&background=14307A&color=ffffff&bold=true&size=256'
-WHERE avatar_url LIKE 'data:image%' OR length(avatar_url) > 500;
-
--- 4. Verify clean status
+-- 4. T'akod mn anaho tne9a
 SELECT 
     id, 
     email, 
