@@ -1,6 +1,219 @@
 import 'package:flutter/material.dart';
 import '../theme/ameex_theme.dart';
 
+/// Premium confirmation dialog with colored header icon,
+/// supports destructive (red) or neutral (blue) tone.
+class AmeexDialog {
+  static Future<bool?> confirm(
+    BuildContext context, {
+    required String title,
+    required String message,
+    String confirmLabel = 'Confirmer',
+    String cancelLabel = 'Annuler',
+    IconData icon = Icons.help_outline_rounded,
+    bool destructive = false,
+  }) {
+    final accent = destructive ? AmeexColors.dangerRed : AmeexColors.primaryBlue;
+    return showDialog<bool>(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.45),
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(22),
+        ),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+        child: Padding(
+          padding: const EdgeInsets.all(22),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 48, height: 48,
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(icon, color: accent, size: 22),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontFamily: AmeexTheme.fontFamily,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.3,
+                  color: AmeexColors.textDark,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                message,
+                style: const TextStyle(
+                  fontFamily: AmeexTheme.fontFamily,
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w500,
+                  color: AmeexColors.textMuted,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 22),
+              Row(
+                children: [
+                  Expanded(
+                    child: SizedBox(
+                      height: 46,
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.of(ctx).pop(false),
+                        style: OutlinedButton.styleFrom(
+                          backgroundColor: AmeexColors.surfaceAlt,
+                          side: BorderSide.none,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: Text(
+                          cancelLabel,
+                          style: const TextStyle(
+                            fontFamily: AmeexTheme.fontFamily,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: AmeexColors.textDark,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: SizedBox(
+                      height: 46,
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.of(ctx).pop(true),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: accent,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: Text(
+                          confirmLabel,
+                          style: const TextStyle(
+                            fontFamily: AmeexTheme.fontFamily,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Branded empty state — icon badge + title + hint, optional action.
+class AmeexEmptyState extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String? hint;
+  final String? actionLabel;
+  final VoidCallback? onAction;
+
+  const AmeexEmptyState({
+    super.key,
+    required this.icon,
+    required this.title,
+    this.hint,
+    this.actionLabel,
+    this.onAction,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 72, height: 72,
+              decoration: BoxDecoration(
+                color: AmeexColors.surfaceAlt,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Icon(icon, size: 30, color: AmeexColors.textFaint),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontFamily: AmeexTheme.fontFamily,
+                color: AmeexColors.textDark,
+                fontSize: 15.5,
+                fontWeight: FontWeight.w600,
+                letterSpacing: -0.2,
+              ),
+            ),
+            if (hint != null) ...[
+              const SizedBox(height: 6),
+              Text(
+                hint!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontFamily: AmeexTheme.fontFamily,
+                  color: AmeexColors.textMuted,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  height: 1.4,
+                ),
+              ),
+            ],
+            if (actionLabel != null) ...[
+              const SizedBox(height: 18),
+              SizedBox(
+                height: 46,
+                child: ElevatedButton(
+                  onPressed: onAction,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AmeexColors.primaryBlue,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(horizontal: 22),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: Text(
+                    actionLabel!,
+                    style: const TextStyle(
+                      fontFamily: AmeexTheme.fontFamily,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 /// Shimmer skeleton block — rectangular placeholder that pulses
 /// to signal "loading real data from the server".
 class AmeexSkeleton extends StatefulWidget {
@@ -197,22 +410,25 @@ class _AmeexAnimatedNumberState extends State<AmeexAnimatedNumber>
   }
 }
 
-/// Soft sparkline (mini trend line) — the biggest "not AI-generated"
-/// signal: real apps show trends, not just numbers.
+/// Chart style variants for AmeexSparkline.
+enum AmeexSparklineStyle { area, bars, line }
+
+/// Mini analytics chart — smooth area, soft bars, or clean line.
+/// Shows a subtle baseline, the max point highlight, and an end dot.
 class AmeexSparkline extends StatelessWidget {
   final List<double> values;
   final Color color;
   final double strokeWidth;
   final double height;
-  final bool fill;
+  final AmeexSparklineStyle style;
 
   const AmeexSparkline({
     super.key,
     required this.values,
     this.color = AmeexColors.primaryBlue,
-    this.strokeWidth = 1.6,
-    this.height = 28,
-    this.fill = true,
+    this.strokeWidth = 1.8,
+    this.height = 32,
+    this.style = AmeexSparklineStyle.area,
   });
 
   @override
@@ -225,7 +441,7 @@ class AmeexSparkline extends StatelessWidget {
           values: values,
           color: color,
           strokeWidth: strokeWidth,
-          fill: fill,
+          style: style,
         ),
       ),
     );
@@ -236,13 +452,13 @@ class _SparklinePainter extends CustomPainter {
   final List<double> values;
   final Color color;
   final double strokeWidth;
-  final bool fill;
+  final AmeexSparklineStyle style;
 
   _SparklinePainter({
     required this.values,
     required this.color,
     required this.strokeWidth,
-    required this.fill,
+    required this.style,
   });
 
   @override
@@ -252,9 +468,60 @@ class _SparklinePainter extends CustomPainter {
     final maxV = values.reduce((a, b) => a > b ? a : b);
     final minV = values.reduce((a, b) => a < b ? a : b);
     final range = (maxV - minV) == 0 ? 1.0 : (maxV - minV);
-    final padding = 4.0;
+    final padding = 5.0;
     final chartHeight = size.height - padding * 2;
 
+    // Subtle baseline (dotted)
+    final baselinePaint = Paint()
+      ..color = const Color(0xFFEDEEF2)
+      ..strokeWidth = 1
+      ..style = PaintingStyle.stroke;
+    final baselineY = size.height - 1;
+    _drawDottedLine(canvas, Offset(0, baselineY),
+        Offset(size.width, baselineY), baselinePaint);
+
+    if (style == AmeexSparklineStyle.bars) {
+      _drawBars(canvas, size, minV, range, padding, chartHeight);
+    } else {
+      _drawLine(canvas, size, minV, range, padding, chartHeight);
+    }
+  }
+
+  void _drawBars(Canvas canvas, Size size, double minV, double range,
+      double padding, double chartHeight) {
+    final count = values.length;
+    final gap = 2.0;
+    final barW = ((size.width - gap * (count - 1)) / count).clamp(2.0, 8.0);
+    int maxIdx = 0;
+    for (int i = 1; i < count; i++) {
+      if (values[i] > values[maxIdx]) maxIdx = i;
+    }
+
+    for (int i = 0; i < count; i++) {
+      final x = i * (barW + gap);
+      final norm = (values[i] - minV) / range;
+      final h = (norm * chartHeight).clamp(2.0, chartHeight);
+      final y = padding + chartHeight - h;
+      final isMax = i == maxIdx;
+      final paint = Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            color.withValues(alpha: isMax ? 0.95 : 0.65),
+            color.withValues(alpha: isMax ? 0.6 : 0.25),
+          ],
+        ).createShader(Rect.fromLTWH(x, y, barW, h));
+      final rect = RRect.fromRectAndRadius(
+        Rect.fromLTWH(x, y, barW, h),
+        const Radius.circular(2),
+      );
+      canvas.drawRRect(rect, paint);
+    }
+  }
+
+  void _drawLine(Canvas canvas, Size size, double minV, double range,
+      double padding, double chartHeight) {
     final path = Path();
     final points = <Offset>[];
     for (int i = 0; i < values.length; i++) {
@@ -264,20 +531,26 @@ class _SparklinePainter extends CustomPainter {
       points.add(Offset(x, y));
     }
 
-    // Smooth curve using quadratic beziers
+    // Catmull-Rom smooth
     path.moveTo(points.first.dx, points.first.dy);
-    for (int i = 1; i < points.length; i++) {
-      final prev = points[i - 1];
-      final curr = points[i];
-      final midX = (prev.dx + curr.dx) / 2;
-      path.quadraticBezierTo(prev.dx, prev.dy, midX, (prev.dy + curr.dy) / 2);
-      if (i == points.length - 1) {
-        path.lineTo(curr.dx, curr.dy);
-      }
+    for (int i = 0; i < points.length - 1; i++) {
+      final p0 = i == 0 ? points[i] : points[i - 1];
+      final p1 = points[i];
+      final p2 = points[i + 1];
+      final p3 = (i + 2 < points.length) ? points[i + 2] : p2;
+      final c1 = Offset(
+        p1.dx + (p2.dx - p0.dx) / 6,
+        p1.dy + (p2.dy - p0.dy) / 6,
+      );
+      final c2 = Offset(
+        p2.dx - (p3.dx - p1.dx) / 6,
+        p2.dy - (p3.dy - p1.dy) / 6,
+      );
+      path.cubicTo(c1.dx, c1.dy, c2.dx, c2.dy, p2.dx, p2.dy);
     }
 
-    // Fill below the curve
-    if (fill) {
+    // Area fill
+    if (style == AmeexSparklineStyle.area) {
       final fillPath = Path.from(path);
       fillPath.lineTo(size.width, size.height);
       fillPath.lineTo(0, size.height);
@@ -287,8 +560,8 @@ class _SparklinePainter extends CustomPainter {
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
-            color.withValues(alpha: 0.18),
-            color.withValues(alpha: 0.0),
+            color.withValues(alpha: 0.22),
+            color.withValues(alpha: 0.02),
           ],
         ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
       canvas.drawPath(fillPath, fillPaint);
@@ -303,16 +576,69 @@ class _SparklinePainter extends CustomPainter {
       ..strokeJoin = StrokeJoin.round;
     canvas.drawPath(path, linePaint);
 
-    // End dot
+    // Max point highlight
+    int maxIdx = 0;
+    for (int i = 1; i < values.length; i++) {
+      if (values[i] > values[maxIdx]) maxIdx = i;
+    }
+    if (maxIdx != values.length - 1) {
+      final maxPaint = Paint()
+        ..color = color.withValues(alpha: 0.35)
+        ..style = PaintingStyle.fill;
+      canvas.drawCircle(points[maxIdx], 2.6, maxPaint);
+    }
+
+    // End dot (halo + fill)
+    final haloPaint = Paint()..color = color.withValues(alpha: 0.18);
+    canvas.drawCircle(points.last, 5.4, haloPaint);
     final dotPaint = Paint()..color = color;
-    canvas.drawCircle(points.last, strokeWidth + 1.2, dotPaint);
+    canvas.drawCircle(points.last, 2.8, dotPaint);
+    final innerPaint = Paint()..color = Colors.white;
+    canvas.drawCircle(points.last, 1.0, innerPaint);
+  }
+
+  void _drawDottedLine(Canvas canvas, Offset a, Offset b, Paint paint) {
+    const dashW = 2.0;
+    const gap = 3.0;
+    final dx = b.dx - a.dx;
+    final dy = b.dy - a.dy;
+    final len = (dx * dx + dy * dy);
+    if (len == 0) return;
+    final total = (len).sqrt();
+    final ux = dx / total;
+    final uy = dy / total;
+    double traveled = 0;
+    while (traveled < total) {
+      final start = Offset(a.dx + ux * traveled, a.dy + uy * traveled);
+      final next = traveled + dashW;
+      final end = Offset(
+        a.dx + ux * next.clamp(0, total),
+        a.dy + uy * next.clamp(0, total),
+      );
+      canvas.drawLine(start, end, paint);
+      traveled = next + gap;
+    }
   }
 
   @override
   bool shouldRepaint(covariant _SparklinePainter oldDelegate) =>
       oldDelegate.values != values ||
       oldDelegate.color != color ||
-      oldDelegate.strokeWidth != strokeWidth;
+      oldDelegate.strokeWidth != strokeWidth ||
+      oldDelegate.style != style;
+}
+
+// Tiny extension for sqrt on double (avoid dart:math import here)
+extension _NumSqrt on double {
+  double sqrt() {
+    double v = this;
+    if (v <= 0) return 0;
+    double x = v;
+    for (int i = 0; i < 20; i++) {
+      x = 0.5 * (x + v / x);
+    }
+    return x;
+  }
 }
 
 /// Branded full-screen splash — elegant pulsing brand-blue core

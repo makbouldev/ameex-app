@@ -369,12 +369,11 @@ class _AdminDashboardHomeTabState extends State<AdminDashboardHomeTab> {
               filteredOrders.isEmpty
                   ? const SliverToBoxAdapter(
                       child: Padding(
-                        padding: EdgeInsets.all(40.0),
-                        child: Center(
-                          child: Text(
-                            'Aucune commande trouvée',
-                            style: TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
-                          ),
+                        padding: EdgeInsets.symmetric(vertical: 24),
+                        child: AmeexEmptyState(
+                          icon: Icons.inbox_outlined,
+                          title: 'Aucune commande',
+                          hint: 'Aucune commande ne correspond à votre recherche.',
                         ),
                       ),
                     )
@@ -590,10 +589,10 @@ class _AdminDashboardHomeTabState extends State<AdminDashboardHomeTab> {
     return '${now.day} ${months[now.month - 1]}';
   }
 
-  /// 7-day trend series for the sparkline, based on orders createdAt
+  /// 14-day trend series for the sparkline, based on orders createdAt
   /// and a simple status filter. Returns at least 2 points.
   List<double> _buildSparkSeries(List<Map<String, dynamic>> orders, bool Function(Map<String, dynamic>) match) {
-    const days = 7;
+    const days = 14;
     final now = DateTime.now();
     final buckets = List<double>.filled(days, 0);
     for (final o in orders) {
@@ -604,9 +603,19 @@ class _AdminDashboardHomeTabState extends State<AdminDashboardHomeTab> {
       if (diff < 0 || diff >= days) continue;
       buckets[days - 1 - diff] += 1;
     }
-    // Slight jitter so flat zero series still shows a line
-    if (buckets.every((v) => v == 0)) return const [0.3, 0.5, 0.4, 0.6, 0.5, 0.4, 0.5];
+    if (buckets.every((v) => v == 0)) {
+      return const [0.2, 0.4, 0.3, 0.5, 0.6, 0.4, 0.7, 0.5, 0.8, 0.6, 0.9, 0.7, 1.0, 0.8];
+    }
     return buckets;
+  }
+
+  /// Compare last 7 days vs previous 7 days → percentage change
+  double _trendDelta(List<double> series) {
+    if (series.length < 14) return 0;
+    final recent = series.sublist(7).fold<double>(0, (a, b) => a + b);
+    final past = series.sublist(0, 7).fold<double>(0, (a, b) => a + b);
+    if (past == 0) return recent > 0 ? 100 : 0;
+    return ((recent - past) / past) * 100;
   }
 
   Widget _buildDataStrip({
@@ -615,13 +624,13 @@ class _AdminDashboardHomeTabState extends State<AdminDashboardHomeTab> {
     required int delivered,
     required int pending,
   }) {
-    final revenueSeries = _buildSparkSeries(orders, (o) => o['status'] == 'delivered');
     final transitSeries = _buildSparkSeries(orders, (o) => o['status'] == 'in_transit');
     final deliveredSeries = _buildSparkSeries(orders, (o) => o['status'] == 'delivered');
     final pendingSeries = _buildSparkSeries(orders, (o) => o['status'] == 'pending');
+    final totalSeries = _buildSparkSeries(orders, (o) => true);
 
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
@@ -635,6 +644,7 @@ class _AdminDashboardHomeTabState extends State<AdminDashboardHomeTab> {
               value: inTransit,
               series: transitSeries,
               color: AmeexColors.primaryBlue,
+              style: AmeexSparklineStyle.bars,
             ),
           ),
           _vDivider(),
@@ -644,6 +654,7 @@ class _AdminDashboardHomeTabState extends State<AdminDashboardHomeTab> {
               value: delivered,
               series: deliveredSeries,
               color: const Color(0xFF10B981),
+              style: AmeexSparklineStyle.area,
             ),
           ),
           _vDivider(),
@@ -653,15 +664,17 @@ class _AdminDashboardHomeTabState extends State<AdminDashboardHomeTab> {
               value: pending,
               series: pendingSeries,
               color: const Color(0xFFF59E0B),
+              style: AmeexSparklineStyle.bars,
             ),
           ),
           _vDivider(),
           Expanded(
             child: _sparkCell(
-              label: 'Livraisons',
-              value: delivered,
-              series: revenueSeries,
+              label: 'Total',
+              value: orders.length,
+              series: totalSeries,
               color: AmeexColors.primaryBlue,
+              style: AmeexSparklineStyle.area,
             ),
           ),
         ],
@@ -671,7 +684,7 @@ class _AdminDashboardHomeTabState extends State<AdminDashboardHomeTab> {
 
   Widget _vDivider() => Container(
         width: 1,
-        height: 48,
+        height: 56,
         margin: const EdgeInsets.symmetric(horizontal: 6),
         color: AmeexColors.divider,
       );
@@ -681,7 +694,10 @@ class _AdminDashboardHomeTabState extends State<AdminDashboardHomeTab> {
     required int value,
     required List<double> series,
     required Color color,
+    required AmeexSparklineStyle style,
   }) {
+    final delta = _trendDelta(series);
+    final up = delta >= 0;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
@@ -696,23 +712,51 @@ class _AdminDashboardHomeTabState extends State<AdminDashboardHomeTab> {
           ),
         ),
         const SizedBox(height: 6),
-        AmeexAnimatedNumber(
-          value: value.toDouble(),
-          format: (v) => v.toStringAsFixed(0),
-          style: const TextStyle(
-            fontFamily: AmeexTheme.fontFamily,
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
-            letterSpacing: -0.5,
-            color: AmeexColors.textDark,
-            height: 1,
-          ),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            AmeexAnimatedNumber(
+              value: value.toDouble(),
+              format: (v) => v.toStringAsFixed(0),
+              style: const TextStyle(
+                fontFamily: AmeexTheme.fontFamily,
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.5,
+                color: AmeexColors.textDark,
+                height: 1,
+              ),
+            ),
+            const SizedBox(width: 6),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 2),
+              child: Row(
+                children: [
+                  Icon(
+                    up ? Icons.north_rounded : Icons.south_rounded,
+                    size: 9,
+                    color: up ? const Color(0xFF10B981) : const Color(0xFFDC2626),
+                  ),
+                  const SizedBox(width: 1),
+                  Text(
+                    '${delta.abs().toStringAsFixed(0)}%',
+                    style: TextStyle(
+                      fontSize: 9.5,
+                      fontWeight: FontWeight.w700,
+                      color: up ? const Color(0xFF10B981) : const Color(0xFFDC2626),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 8),
         AmeexSparkline(
           values: series,
           color: color,
-          height: 22,
+          height: 28,
+          style: style,
         ),
       ],
     );
@@ -1447,23 +1491,10 @@ class _AdminOrdersTabState extends State<AdminOrdersTab> {
 
               Expanded(
                 child: filtered.isEmpty
-                    ? const Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.inbox_outlined,
-                                size: 42, color: AmeexColors.textFaint),
-                            SizedBox(height: 12),
-                            Text(
-                              'Aucune commande',
-                              style: TextStyle(
-                                color: AmeexColors.textMuted,
-                                fontSize: 14.5,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
+                    ? const AmeexEmptyState(
+                        icon: Icons.inbox_outlined,
+                        title: 'Aucune commande',
+                        hint: 'Aucune commande dans cette catégorie.',
                       )
                     : ListView.builder(
                         padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
@@ -2331,7 +2362,11 @@ class AdminNotificationsTab extends StatelessWidget {
           final events = orders.where((o) => o['status'] != 'pending').toList();
 
           if (events.isEmpty) {
-            return const Center(child: Text('Aucune activité récente', style: TextStyle(color: Colors.grey)));
+            return const AmeexEmptyState(
+              icon: Icons.notifications_none_rounded,
+              title: 'Aucune activité récente',
+              hint: 'Les livraisons terminées et annulations apparaîtront ici.',
+            );
           }
 
           return ListView.separated(
@@ -2668,15 +2703,10 @@ class AdminProfileTab extends StatelessWidget {
                     final drivers = snapshot.data ?? [];
 
                     if (drivers.isEmpty) {
-                      return Container(
-                        padding: const EdgeInsets.all(24),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Center(
-                          child: Text('Aucun livreur enregistré pour le moment.'),
-                        ),
+                      return const AmeexEmptyState(
+                        icon: Icons.two_wheeler_rounded,
+                        title: 'Aucun livreur',
+                        hint: 'Ajoutez votre premier livreur pour commencer à distribuer des commandes.',
                       );
                     }
 
@@ -3008,33 +3038,13 @@ class AdminProfileTab extends StatelessWidget {
       return;
     }
 
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-        title: const Text(
-          'Supprimer ce livreur ?',
-          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
-        ),
-        content: Text(
-          'Vous allez supprimer le profil de $driverName. Cette action est irréversible.',
-          style: const TextStyle(fontSize: 14, color: AmeexColors.textMuted),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Annuler'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AmeexColors.dangerRed,
-              foregroundColor: Colors.white,
-            ),
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Supprimer'),
-          ),
-        ],
-      ),
+    final ok = await AmeexDialog.confirm(
+      context,
+      title: 'Supprimer ce livreur ?',
+      message: 'Vous allez supprimer le profil de $driverName. Cette action est irréversible.',
+      icon: Icons.delete_outline_rounded,
+      confirmLabel: 'Supprimer',
+      destructive: true,
     );
 
     if (ok != true) return;
