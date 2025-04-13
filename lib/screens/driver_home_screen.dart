@@ -2809,11 +2809,11 @@ class _DriverEarningsTabState extends State<DriverEarningsTab> {
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          'Portefeuille Ameex',
+                          'Solde Revenus (Gains livreur)',
                           style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.75),
+                            color: Colors.white.withValues(alpha: 0.85),
                             fontSize: 12.5,
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.w700,
                             letterSpacing: 0.1,
                           ),
                         ),
@@ -3068,9 +3068,9 @@ class _DriverEarningsTabState extends State<DriverEarningsTab> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'Caisse agence',
+                      'Caisse à verser à l\'agence (Cash COD)',
                       style: TextStyle(
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w700,
                         fontSize: 14.5,
                         letterSpacing: -0.2,
                         color: AmeexColors.textDark,
@@ -3079,10 +3079,10 @@ class _DriverEarningsTabState extends State<DriverEarningsTab> {
                     const SizedBox(height: 2),
                     Text(
                       needsRemittance
-                          ? '$unremittedCount colis en attente'
-                          : 'Toutes les remises à jour',
+                          ? '$unremittedCount colis livrés · Espèces à déposer à l\'agence'
+                          : 'Caisse 100% à jour · Aucun montant dû',
                       style: const TextStyle(
-                        fontSize: 12,
+                        fontSize: 11.5,
                         color: AmeexColors.textMuted,
                         fontWeight: FontWeight.w500,
                       ),

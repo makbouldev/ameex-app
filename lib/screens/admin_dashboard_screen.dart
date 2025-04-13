@@ -2710,12 +2710,94 @@ class AdminProfileTab extends StatelessWidget {
                       );
                     }
 
-                    return ListView.separated(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: drivers.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: 12),
-                      itemBuilder: (context, index) {
+                    // Compute Global Totals for All Drivers
+                    double totalCaisseAll = 0.0;
+                    double totalRevenusAll = 0.0;
+                    int totalUnremittedColis = 0;
+
+                    for (final d in drivers) {
+                      final dId = d['id'];
+                      final dOrders = allOrders.where((o) => o['assigned_driver_id'] == dId).toList();
+                      final b = CaisseRemittanceHelper.calculateBalances(dOrders);
+                      totalCaisseAll += b.codToRemitToAgency;
+                      totalRevenusAll += b.totalCommission;
+                      totalUnremittedColis += b.unremittedCount;
+                    }
+
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Global Financial Summary Banner
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 16),
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [AmeexColors.primaryBlue, Color(0xFF1E3A8A)],
+                            ),
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 3))],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Row(
+                                children: [
+                                  Icon(Icons.account_balance_rounded, color: Colors.white70, size: 18),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    'SYNTHÈSE FINANCIÈRE DE L\'AGENCE',
+                                    style: TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 0.8),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        const Text('Caisse totale à récupérer :', style: TextStyle(color: Colors.white70, fontSize: 11)),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          '${totalCaisseAll.toStringAsFixed(2)} MAD',
+                                          style: const TextStyle(color: Color(0xFFFBBF24), fontSize: 17, fontWeight: FontWeight.w800),
+                                        ),
+                                        Text('$totalUnremittedColis colis non encore versés', style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 9.5)),
+                                      ],
+                                    ),
+                                  ),
+                                  Container(width: 1, height: 40, color: Colors.white24),
+                                  const SizedBox(width: 14),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        const Text('Total revenus des livreurs :', style: TextStyle(color: Colors.white70, fontSize: 11)),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          '${totalRevenusAll.toStringAsFixed(2)} MAD',
+                                          style: const TextStyle(color: Color(0xFF4ADE80), fontSize: 17, fontWeight: FontWeight.w800),
+                                        ),
+                                        Text('Commissions cumulées', style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 9.5)),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        ListView.separated(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: drivers.length,
+                          separatorBuilder: (_, _) => const SizedBox(height: 12),
+                          itemBuilder: (context, index) {
                         final d = drivers[index];
                         final name = d['full_name'] ?? 'Livreur';
                         final phone = d['phone'] ?? 'Non renseigné';
@@ -2825,7 +2907,7 @@ class AdminProfileTab extends StatelessWidget {
                                 ],
                               ),
 
-                              const SizedBox(height: 12),
+                              const SizedBox(height: 10),
 
                               // Meta row
                               Row(
@@ -2849,87 +2931,182 @@ class AdminProfileTab extends StatelessWidget {
 
                               const SizedBox(height: 12),
 
-                              // Caisse row
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Icon(
-                                        needsRemittance
-                                            ? Icons.account_balance_wallet_outlined
-                                            : Icons.check_circle_outline_rounded,
-                                        size: 14,
-                                        color: needsRemittance
-                                            ? const Color(0xFFD97706)
-                                            : const Color(0xFF10B981),
-                                      ),
-                                      const SizedBox(width: 6),
-                                      Text(
-                                        needsRemittance
-                                            ? 'Caisse · ${balances.codToRemitToAgency.toStringAsFixed(0)} MAD'
-                                            : 'Caisse à jour',
-                                        style: const TextStyle(
-                                          fontSize: 12.5,
-                                          fontWeight: FontWeight.w500,
-                                          color: AmeexColors.textMuted,
+                              // Dual Financial Metrics Box (Revenus vs Caisse Agence)
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF8FAFC),
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                                ),
+                                child: Column(
+                                  children: [
+                                    Row(
+                                      children: [
+                                        // 1. Solde Revenus du livreur
+                                        Expanded(
+                                          child: Container(
+                                            padding: const EdgeInsets.all(10),
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFFF0FDF4),
+                                              borderRadius: BorderRadius.circular(10),
+                                              border: Border.all(color: const Color(0xFFBBF7D0)),
+                                            ),
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                const Row(
+                                                  children: [
+                                                    Icon(Icons.account_balance_wallet_rounded, size: 14, color: Color(0xFF16A34A)),
+                                                    SizedBox(width: 4),
+                                                    Text(
+                                                      'Solde Revenus',
+                                                      style: TextStyle(
+                                                        fontSize: 11,
+                                                        fontWeight: FontWeight.w700,
+                                                        color: Color(0xFF166534),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                                const SizedBox(height: 6),
+                                                Text(
+                                                  '${balances.totalCommission.toStringAsFixed(2)} MAD',
+                                                  style: const TextStyle(
+                                                    fontSize: 15,
+                                                    fontWeight: FontWeight.w800,
+                                                    color: Color(0xFF15803D),
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 2),
+                                                Text(
+                                                  '${balances.availableCommission.toStringAsFixed(0)} MAD dispo · ${balances.pendingCommission.toStringAsFixed(0)} MAD attente',
+                                                  style: const TextStyle(fontSize: 9.5, color: Color(0xFF166534)),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 10),
+
+                                        // 2. Caisse à verser à l'agence
+                                        Expanded(
+                                          child: Container(
+                                            padding: const EdgeInsets.all(10),
+                                            decoration: BoxDecoration(
+                                              color: needsRemittance ? const Color(0xFFFFFBEB) : const Color(0xFFF8FAFC),
+                                              borderRadius: BorderRadius.circular(10),
+                                              border: Border.all(
+                                                color: needsRemittance ? const Color(0xFFFDE68A) : const Color(0xFFE2E8F0),
+                                              ),
+                                            ),
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Row(
+                                                  children: [
+                                                    Icon(
+                                                      Icons.storefront_rounded,
+                                                      size: 14,
+                                                      color: needsRemittance ? const Color(0xFFD97706) : Colors.grey,
+                                                    ),
+                                                    const SizedBox(width: 4),
+                                                    Text(
+                                                      'Caisse à verser',
+                                                      style: TextStyle(
+                                                        fontSize: 11,
+                                                        fontWeight: FontWeight.w700,
+                                                        color: needsRemittance ? const Color(0xFF92400E) : Colors.grey.shade700,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                                const SizedBox(height: 6),
+                                                Text(
+                                                  '${balances.codToRemitToAgency.toStringAsFixed(2)} MAD',
+                                                  style: TextStyle(
+                                                    fontSize: 15,
+                                                    fontWeight: FontWeight.w800,
+                                                    color: needsRemittance ? const Color(0xFFB45309) : const Color(0xFF475569),
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 2),
+                                                Text(
+                                                  needsRemittance ? '${balances.unremittedCount} colis à verser' : 'Caisse à jour',
+                                                  style: TextStyle(
+                                                    fontSize: 9.5,
+                                                    color: needsRemittance ? const Color(0xFFB45309) : Colors.grey.shade600,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+
+                                    // Action bar if needs remittance
+                                    if (needsRemittance) ...[
+                                      const SizedBox(height: 10),
+                                      SizedBox(
+                                        width: double.infinity,
+                                        child: ElevatedButton.icon(
+                                          onPressed: () async {
+                                            final ok = await showDialog<bool>(
+                                              context: context,
+                                              builder: (ctx) => AlertDialog(
+                                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                                title: const Text('Valider versement caisse ?', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                                content: Text('Confirmez-vous que le livreur $name a remis la somme de ${balances.codToRemitToAgency.toStringAsFixed(2)} MAD à l\'agence ?\n\nCette action débloquera +${balances.pendingCommission.toStringAsFixed(2)} MAD sur son solde retirable.'),
+                                                actions: [
+                                                  TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Annuler')),
+                                                  ElevatedButton(
+                                                    onPressed: () => Navigator.of(ctx).pop(true),
+                                                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF10B981), foregroundColor: Colors.white),
+                                                    child: const Text('Confirmer l\'encaissement'),
+                                                  ),
+                                                ],
+                                              ),
+                                            );
+                                            if (ok == true) {
+                                              await CaisseRemittanceHelper.validateDriverRemittance(
+                                                supabase: supabase,
+                                                driverId: dId,
+                                                orders: driverOrders,
+                                              );
+                                              if (context.mounted) {
+                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                  SnackBar(
+                                                    content: Text('Caisse validée pour $name.'),
+                                                    backgroundColor: const Color(0xFF10B981),
+                                                    behavior: SnackBarBehavior.floating,
+                                                  ),
+                                                );
+                                              }
+                                            }
+                                          },
+                                          icon: const Icon(Icons.check_circle_rounded, size: 16),
+                                          label: Text('Valider encaissement caisse (${balances.codToRemitToAgency.toStringAsFixed(0)} MAD)'),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: const Color(0xFFD97706),
+                                            foregroundColor: Colors.white,
+                                            elevation: 0,
+                                            padding: const EdgeInsets.symmetric(vertical: 8),
+                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                          ),
                                         ),
                                       ),
                                     ],
-                                  ),
-                                  if (needsRemittance)
-                                    InkWell(
-                                      borderRadius: BorderRadius.circular(999),
-                                      onTap: () async {
-                                        final ok = await showDialog<bool>(
-                                          context: context,
-                                          builder: (ctx) => AlertDialog(
-                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                                            title: const Text('Valider versement caisse ?', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                                            content: Text('Confirmez-vous que le livreur $name a remis la somme de ${balances.codToRemitToAgency.toStringAsFixed(2)} MAD à l\'agence ?\n\nCette action débloquera +${balances.pendingCommission.toStringAsFixed(2)} MAD sur son solde retirable.'),
-                                            actions: [
-                                              TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Annuler')),
-                                              ElevatedButton(
-                                                onPressed: () => Navigator.of(ctx).pop(true),
-                                                child: const Text('Confirmer'),
-                                              ),
-                                            ],
-                                          ),
-                                        );
-                                        if (ok == true) {
-                                          await CaisseRemittanceHelper.validateDriverRemittance(
-                                            supabase: supabase,
-                                            driverId: dId,
-                                            orders: driverOrders,
-                                          );
-                                          if (context.mounted) {
-                                            ScaffoldMessenger.of(context).showSnackBar(
-                                              SnackBar(
-                                                content: Text('Caisse validée pour $name.'),
-                                              ),
-                                            );
-                                          }
-                                        }
-                                      },
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                                        decoration: BoxDecoration(
-                                          color: AmeexColors.primaryBlue,
-                                          borderRadius: BorderRadius.circular(999),
-                                        ),
-                                        child: const Text(
-                                          'Valider',
-                                          style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Colors.white),
-                                        ),
-                                      ),
-                                    ),
-                                ],
+                                  ],
+                                ),
                               ),
                             ],
                           ),
                         );
                       },
-                    );
+                    ),
+                  ],
+                );
                   },
                 );
               },
