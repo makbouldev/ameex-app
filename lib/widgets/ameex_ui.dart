@@ -296,7 +296,7 @@ class AmeexInitialLoad extends StatefulWidget {
     super.key,
     required this.skeleton,
     required this.child,
-    this.minDuration = const Duration(seconds: 3),
+    this.minDuration = const Duration(milliseconds: 1000),
   });
 
   @override

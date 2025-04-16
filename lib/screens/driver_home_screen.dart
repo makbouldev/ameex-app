@@ -25,6 +25,15 @@ class DriverHomeScreen extends StatefulWidget {
 
 class _DriverHomeScreenState extends State<DriverHomeScreen> {
   int _currentNavIndex = 0;
+  final Map<int, int> _tabVisitKeys = {};
+
+  void _onNavTap(int index) {
+    if (index == _currentNavIndex) return;
+    setState(() {
+      _currentNavIndex = index;
+      _tabVisitKeys[index] = (_tabVisitKeys[index] ?? 0) + 1;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -33,11 +42,11 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
     return Scaffold(
       body: AnimatedIndexedStack(
         index: _currentNavIndex,
-        children: const [
-          DriverLiveMapTab(),
-          DriverHistoryTab(),
-          DriverEarningsTab(),
-          DriverProfileTab(),
+        children: [
+          DriverLiveMapTab(key: ValueKey('course_${_tabVisitKeys[0] ?? 0}')),
+          DriverHistoryTab(key: ValueKey('history_${_tabVisitKeys[1] ?? 0}')),
+          DriverEarningsTab(key: ValueKey('revenus_${_tabVisitKeys[2] ?? 0}')),
+          DriverProfileTab(key: ValueKey('profile_${_tabVisitKeys[3] ?? 0}')),
         ],
       ),
       bottomNavigationBar: Container(
@@ -47,7 +56,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
         ),
         child: BottomNavigationBar(
           currentIndex: _currentNavIndex,
-          onTap: (index) => setState(() => _currentNavIndex = index),
+          onTap: _onNavTap,
           type: BottomNavigationBarType.fixed,
           backgroundColor: Colors.white,
           selectedItemColor: deepNavy,
@@ -1054,7 +1063,9 @@ class _DriverLiveMapTabState extends State<DriverLiveMapTab> {
     final LatLng finalClientDestination = _customDestinationPin ??
         LatLng(_driverLocation.latitude + 0.012, _driverLocation.longitude + 0.014);
 
-    return Stack(
+    return AmeexInitialLoad(
+      skeleton: _buildDriverMapSkeleton(),
+      child: Stack(
       children: [
         // 1. OPENSTREETMAP (ONLY REAL ROUTE AFTER DESTINATION PINPOINTED)
         FlutterMap(
@@ -2211,6 +2222,49 @@ class _DriverLiveMapTabState extends State<DriverLiveMapTab> {
           },
         ),
       ],
+    ),
+    );
+  }
+
+  Widget _buildDriverMapSkeleton() {
+    return Container(
+      color: const Color(0xFFF1F5F9),
+      child: Stack(
+        children: [
+          const Center(child: AmeexLoading(size: 44)),
+          Positioned(
+            bottom: 24,
+            left: 16,
+            right: 16,
+            child: Container(
+              height: 120,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(22),
+                boxShadow: AmeexDesign.shadowCard,
+              ),
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: const [
+                  AmeexSkeleton(width: 48, height: 48, radius: 999),
+                  SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        AmeexSkeleton(width: 140, height: 16, radius: 6),
+                        SizedBox(height: 8),
+                        AmeexSkeleton(width: 180, height: 12, radius: 6),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../theme/ameex_theme.dart';
 import '../widgets/driver_avatar.dart';
 import '../widgets/ameex_animations.dart';
+import '../widgets/ameex_ui.dart';
 import '../widgets/parcel_scanner_dialog.dart'; // ParcelHelper utilities
 
 class AddOrderScreen extends StatefulWidget {
@@ -398,7 +399,9 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
           ),
         ),
       ),
-      body: SingleChildScrollView(
+      body: AmeexInitialLoad(
+        skeleton: _buildFormSkeleton(),
+        child: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
         child: AmeexFadeSlideIn(
           child: Form(
@@ -1140,6 +1143,25 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
           ),
         ),
         ),
+      ),
+      ),
+    );
+  }
+
+  Widget _buildFormSkeleton() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: List.generate(6, (i) => Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: const [
+            AmeexSkeleton(width: 140, height: 14, radius: 6),
+            SizedBox(height: 8),
+            AmeexSkeleton(width: double.infinity, height: 50, radius: 14),
+            SizedBox(height: 18),
+          ],
+        )),
       ),
     );
   }

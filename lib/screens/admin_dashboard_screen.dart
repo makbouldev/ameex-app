@@ -45,6 +45,15 @@ class AdminDashboardScreen extends StatefulWidget {
 
 class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   int _selectedNavIndex = 0;
+  final Map<int, int> _tabVisitKeys = {};
+
+  void _onNavTap(int index) {
+    if (index == _selectedNavIndex) return;
+    setState(() {
+      _selectedNavIndex = index;
+      _tabVisitKeys[index] = (_tabVisitKeys[index] ?? 0) + 1;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -54,12 +63,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       backgroundColor: Colors.white,
       body: AnimatedIndexedStack(
         index: _selectedNavIndex,
-        children: const [
-          AdminDashboardHomeTab(),
-          AdminOrdersTab(),
-          AdminLiveTrackingTab(),
-          AdminNotificationsTab(),
-          AdminProfileTab(),
+        children: [
+          AdminDashboardHomeTab(key: ValueKey('home_${_tabVisitKeys[0] ?? 0}')),
+          AdminOrdersTab(key: ValueKey('orders_${_tabVisitKeys[1] ?? 0}')),
+          AdminLiveTrackingTab(key: ValueKey('tracking_${_tabVisitKeys[2] ?? 0}')),
+          AdminNotificationsTab(key: ValueKey('notif_${_tabVisitKeys[3] ?? 0}')),
+          AdminProfileTab(key: ValueKey('profile_${_tabVisitKeys[4] ?? 0}')),
         ],
       ),
       bottomNavigationBar: Container(
@@ -69,7 +78,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         ),
         child: BottomNavigationBar(
           currentIndex: _selectedNavIndex,
-          onTap: (index) => setState(() => _selectedNavIndex = index),
+          onTap: _onNavTap,
           type: BottomNavigationBarType.fixed,
           backgroundColor: Colors.white,
           selectedItemColor: primaryBlue,
@@ -1755,7 +1764,9 @@ class _AdminLiveTrackingTabState extends State<AdminLiveTrackingTab> {
           ),
         ),
       ),
-      body: Column(
+      body: AmeexInitialLoad(
+        skeleton: _buildLiveTrackingSkeleton(),
+        child: Column(
         children: [
           // Map View with Drivers, Client Destination Pins, and Trajectory Polylines
           Expanded(
@@ -1979,6 +1990,71 @@ class _AdminLiveTrackingTabState extends State<AdminLiveTrackingTab> {
           ),
         ],
       ),
+      ),
+    );
+  }
+
+  Widget _buildLiveTrackingSkeleton() {
+    return Column(
+      children: [
+        Expanded(
+          flex: 6,
+          child: Container(
+            color: const Color(0xFFF1F5F9),
+            child: const Center(child: AmeexLoading(size: 44)),
+          ),
+        ),
+        Expanded(
+          flex: 4,
+          child: Container(
+            color: Colors.white,
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: const [
+                    AmeexSkeleton(width: 110, height: 32, radius: 999),
+                    SizedBox(width: 8),
+                    AmeexSkeleton(width: 130, height: 32, radius: 999),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Expanded(
+                  child: ListView.separated(
+                    itemCount: 3,
+                    separatorBuilder: (_, __) => const SizedBox(height: 10),
+                    itemBuilder: (_, __) => Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                      ),
+                      child: Row(
+                        children: const [
+                          AmeexSkeleton(width: 40, height: 40, radius: 999),
+                          SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                AmeexSkeleton(width: 120, height: 14, radius: 6),
+                                SizedBox(height: 6),
+                                AmeexSkeleton(width: 160, height: 11, radius: 6),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 
