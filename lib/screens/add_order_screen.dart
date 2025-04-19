@@ -92,13 +92,20 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
       try {
         data = await supabase
             .from('profiles')
-            .select('id, full_name, phone, vehicle_type, zone, avatar_url, role, is_online, status')
+            .select('id, full_name, phone, vehicle_type, zone, role, is_online, status')
             .eq('role', 'driver');
       } catch (_) {
-        data = await supabase
-            .from('profiles')
-            .select('id, full_name, phone, vehicle_type, zone, avatar_url, role')
-            .eq('role', 'driver');
+        try {
+          data = await supabase
+              .from('profiles')
+              .select('id, full_name, phone, vehicle_type, zone, role')
+              .eq('role', 'driver');
+        } catch (_) {
+          data = await supabase
+              .from('profiles')
+              .select()
+              .eq('role', 'driver');
+        }
       }
 
       final onlineIds = <String>{};
