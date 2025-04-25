@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../theme/ameex_theme.dart';
 import '../widgets/driver_avatar.dart';
 import '../widgets/ameex_animations.dart';
+import '../widgets/ameex_ui.dart';
 
 class AddDriverScreen extends StatefulWidget {
   const AddDriverScreen({super.key});
@@ -325,7 +326,9 @@ class _AddDriverScreenState extends State<AddDriverScreen> {
           ),
         ),
       ),
-      body: SingleChildScrollView(
+      body: AmeexInitialLoad(
+        skeleton: _buildDriverFormSkeleton(),
+        child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
         child: AmeexFadeSlideIn(
           child: Form(
@@ -765,6 +768,37 @@ class _AddDriverScreenState extends State<AddDriverScreen> {
           ),
         ),
         ),
+      ),
+      ),
+    );
+  }
+
+  Widget _buildDriverFormSkeleton() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Column(
+              children: const [
+                AmeexSkeleton(width: 80, height: 80, radius: 999),
+                SizedBox(height: 10),
+                AmeexSkeleton(width: 140, height: 14, radius: 6),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+          ...List.generate(5, (i) => Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: const [
+              AmeexSkeleton(width: 130, height: 14, radius: 6),
+              SizedBox(height: 8),
+              AmeexSkeleton(width: double.infinity, height: 48, radius: 12),
+              SizedBox(height: 16),
+            ],
+          )),
+        ],
       ),
     );
   }
