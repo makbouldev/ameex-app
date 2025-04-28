@@ -2573,8 +2573,78 @@ class AdminNotificationsTab extends StatelessWidget {
 // ============================================================================
 // TAB 4: PROFIL ADMIN & GESTION DE L'ÉQUIPE DES LIVREURS
 // ============================================================================
-class AdminProfileTab extends StatelessWidget {
+class AdminProfileTab extends StatefulWidget {
   const AdminProfileTab({super.key});
+
+  @override
+  State<AdminProfileTab> createState() => _AdminProfileTabState();
+}
+
+class _AdminProfileTabState extends State<AdminProfileTab> {
+  String _selectedFilter = 'all'; // 'all', 'online', 'offline', 'caisse'
+
+  Widget _buildFilterChip(String label, String value, int count, Color color, IconData icon) {
+    final isSelected = _selectedFilter == value;
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(999),
+          onTap: () => setState(() => _selectedFilter = value),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOut,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              color: isSelected ? AmeexColors.primaryBlue : AmeexColors.surfaceAlt,
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(
+                color: isSelected ? AmeexColors.primaryBlue : const Color(0xFFE2E8F0),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  icon,
+                  size: 14,
+                  color: isSelected ? Colors.white : color,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: isSelected ? Colors.white : AmeexColors.textDark,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12.5,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? Colors.white.withValues(alpha: 0.22)
+                        : Colors.white,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    '$count',
+                    style: TextStyle(
+                      color: isSelected ? Colors.white : AmeexColors.textMuted,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 10.5,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -2772,189 +2842,335 @@ class AdminProfileTab extends StatelessWidget {
 
                 return StreamBuilder<List<Map<String, dynamic>>>(
                   stream: supabase
-                      .from('profiles')
-                      .stream(primaryKey: ['id'])
-                      .eq('role', 'driver'),
-                  builder: (context, snapshot) {
-                    final drivers = snapshot.data ?? [];
-
-                    if (drivers.isEmpty) {
-                      return const AmeexEmptyState(
-                        icon: Icons.two_wheeler_rounded,
-                        title: 'Aucun livreur',
-                        hint: 'Ajoutez votre premier livreur pour commencer à distribuer des commandes.',
-                      );
+                      .from('driver_locations')
+                      .stream(primaryKey: ['id']),
+                  builder: (context, locSnap) {
+                    final locations = locSnap.data ?? [];
+                    final now = DateTime.now().toUtc();
+                    final activeGpsDriverIds = <String>{};
+                    for (final l in locations) {
+                      final dId = l['driver_id'] as String?;
+                      final dtStr = l['updated_at'] as String?;
+                      if (dId != null && dtStr != null) {
+                        final dt = DateTime.tryParse(dtStr);
+                        if (dt != null && now.difference(dt.toUtc()).inMinutes.abs() < 20) {
+                          activeGpsDriverIds.add(dId);
+                        }
+                      }
                     }
 
-                    // Compute Global Totals for All Drivers
-                    double totalCaisseAll = 0.0;
-                    double totalRevenusAll = 0.0;
-                    int totalUnremittedColis = 0;
+                    return StreamBuilder<List<Map<String, dynamic>>>(
+                      stream: supabase
+                          .from('profiles')
+                          .stream(primaryKey: ['id'])
+                          .eq('role', 'driver'),
+                      builder: (context, snapshot) {
+                        final drivers = snapshot.data ?? [];
 
-                    for (final d in drivers) {
-                      final dId = d['id'];
-                      final dOrders = allOrders.where((o) => o['assigned_driver_id'] == dId).toList();
-                      final b = CaisseRemittanceHelper.calculateBalances(dOrders);
-                      totalCaisseAll += b.codToRemitToAgency;
-                      totalRevenusAll += b.totalCommission;
-                      totalUnremittedColis += b.unremittedCount;
-                    }
+                        if (drivers.isEmpty) {
+                          return const AmeexEmptyState(
+                            icon: Icons.two_wheeler_rounded,
+                            title: 'Aucun livreur',
+                            hint: 'Ajoutez votre premier livreur pour commencer à distribuer des commandes.',
+                          );
+                        }
 
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Global Financial Summary Banner
-                        Container(
-                          margin: const EdgeInsets.only(bottom: 16),
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [AmeexColors.primaryBlue, Color(0xFF1E3A8A)],
-                            ),
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 3))],
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Row(
-                                children: [
-                                  Icon(Icons.account_balance_rounded, color: Colors.white70, size: 18),
-                                  SizedBox(width: 8),
-                                  Text(
-                                    'SYNTHÈSE FINANCIÈRE DE L\'AGENCE',
-                                    style: TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 0.8),
-                                  ),
-                                ],
+                        // Compute Global Totals for All Drivers & Filter Counts
+                        double totalCaisseAll = 0.0;
+                        double totalRevenusAll = 0.0;
+                        int totalUnremittedColis = 0;
+
+                        int onlineCount = 0;
+                        int offlineCount = 0;
+                        int caissePendingCount = 0;
+
+                        for (final d in drivers) {
+                          final dId = d['id'];
+                          final dOrders = allOrders.where((o) => o['assigned_driver_id'] == dId).toList();
+                          final b = CaisseRemittanceHelper.calculateBalances(dOrders);
+                          totalCaisseAll += b.codToRemitToAgency;
+                          totalRevenusAll += b.totalCommission;
+                          totalUnremittedColis += b.unremittedCount;
+
+                          final isOnline = d['is_online'] == true ||
+                              d['status'] == 'online' ||
+                              activeGpsDriverIds.contains(dId);
+                          if (isOnline) {
+                            onlineCount++;
+                          } else {
+                            offlineCount++;
+                          }
+
+                          if (b.codToRemitToAgency > 0) {
+                            caissePendingCount++;
+                          }
+                        }
+
+                        // Filtered Drivers list based on _selectedFilter
+                        final filteredDrivers = drivers.where((d) {
+                          final dId = d['id'];
+                          final isOnline = d['is_online'] == true ||
+                              d['status'] == 'online' ||
+                              activeGpsDriverIds.contains(dId);
+                          final dOrders = allOrders.where((o) => o['assigned_driver_id'] == dId).toList();
+                          final b = CaisseRemittanceHelper.calculateBalances(dOrders);
+                          final needsRemittance = b.codToRemitToAgency > 0;
+
+                          if (_selectedFilter == 'online') return isOnline;
+                          if (_selectedFilter == 'offline') return !isOnline;
+                          if (_selectedFilter == 'caisse') return needsRemittance;
+                          return true;
+                        }).toList();
+
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Global Financial Summary Banner
+                            Container(
+                              margin: const EdgeInsets.only(bottom: 16),
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [AmeexColors.primaryBlue, Color(0xFF1E3A8A)],
+                                ),
+                                borderRadius: BorderRadius.circular(16),
+                                boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 3))],
                               ),
-                              const SizedBox(height: 12),
-                              Row(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        const Text('Caisse totale à récupérer :', style: TextStyle(color: Colors.white70, fontSize: 11)),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          '${totalCaisseAll.toStringAsFixed(2)} MAD',
-                                          style: const TextStyle(color: Color(0xFFFBBF24), fontSize: 17, fontWeight: FontWeight.w800),
-                                        ),
-                                        Text('$totalUnremittedColis colis non encore versés', style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 9.5)),
-                                      ],
-                                    ),
-                                  ),
-                                  Container(width: 1, height: 40, color: Colors.white24),
-                                  const SizedBox(width: 14),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        const Text('Total revenus des livreurs :', style: TextStyle(color: Colors.white70, fontSize: 11)),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          '${totalRevenusAll.toStringAsFixed(2)} MAD',
-                                          style: const TextStyle(color: Color(0xFF4ADE80), fontSize: 17, fontWeight: FontWeight.w800),
-                                        ),
-                                        Text('Commissions cumulées', style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 9.5)),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        ListView.separated(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: drivers.length,
-                          separatorBuilder: (_, _) => const SizedBox(height: 12),
-                          itemBuilder: (context, index) {
-                        final d = drivers[index];
-                        final name = d['full_name'] ?? 'Livreur';
-                        final phone = d['phone'] ?? 'Non renseigné';
-                        final vehicle = d['vehicle_type'] ?? 'Moto / Scooter';
-                        final zone = d['zone'] ?? 'Casablanca';
-                        final dId = d['id'];
-
-                        final driverOrders = allOrders.where((o) => o['assigned_driver_id'] == dId).toList();
-                        final balances = CaisseRemittanceHelper.calculateBalances(driverOrders);
-                        final needsRemittance = balances.codToRemitToAgency > 0;
-                        final activeOrders = driverOrders.where((o) =>
-                            o['status'] != 'delivered' && o['status'] != 'cancelled').length;
-
-                        return Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(18),
-                            boxShadow: AmeexDesign.shadowCard,
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(2),
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      gradient: LinearGradient(
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
-                                        colors: [
-                                          AmeexColors.primaryBlue.withValues(alpha: 0.35),
-                                          AmeexColors.primaryBlue.withValues(alpha: 0.08),
-                                        ],
+                                  const Row(
+                                    children: [
+                                      Icon(Icons.account_balance_rounded, color: Colors.white70, size: 18),
+                                      SizedBox(width: 8),
+                                      Text(
+                                        'SYNTHÈSE FINANCIÈRE DE L\'AGENCE',
+                                        style: TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 0.8),
                                       ),
-                                    ),
-                                    child: DriverAvatar(
-                                      driverData: d,
-                                      radius: 20,
-                                      borderColor: Colors.white,
-                                      borderWidth: 1.5,
-                                      showBadge: true,
-                                      badgeColor: const Color(0xFF10B981),
-                                    ),
+                                    ],
                                   ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          name,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.w600,
-                                            fontSize: 15,
-                                            letterSpacing: -0.2,
-                                            color: AmeexColors.textDark,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 3),
-                                        Row(
+                                  const SizedBox(height: 12),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
                                           children: [
-                                            const Icon(Icons.phone_outlined, size: 12, color: AmeexColors.textMuted),
-                                            const SizedBox(width: 4),
+                                            const Text('Caisse totale à récupérer :', style: TextStyle(color: Colors.white70, fontSize: 11)),
+                                            const SizedBox(height: 4),
                                             Text(
-                                              phone,
-                                              style: const TextStyle(
-                                                color: AmeexColors.textMuted,
-                                                fontSize: 12.5,
-                                                fontWeight: FontWeight.w500,
-                                              ),
+                                              '${totalCaisseAll.toStringAsFixed(2)} MAD',
+                                              style: const TextStyle(color: Color(0xFFFBBF24), fontSize: 17, fontWeight: FontWeight.w800),
                                             ),
+                                            Text('$totalUnremittedColis colis non encore versés', style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 9.5)),
                                           ],
                                         ),
-                                      ],
-                                    ),
+                                      ),
+                                      Container(width: 1, height: 40, color: Colors.white24),
+                                      const SizedBox(width: 14),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            const Text('Total revenus des livreurs :', style: TextStyle(color: Colors.white70, fontSize: 11)),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              '${totalRevenusAll.toStringAsFixed(2)} MAD',
+                                              style: const TextStyle(color: Color(0xFF4ADE80), fontSize: 17, fontWeight: FontWeight.w800),
+                                            ),
+                                            Text('Commissions cumulées', style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 9.5)),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
                                   ),
+                                ],
+                              ),
+                            ),
+
+                            // Filter Pills Bar (Tous, En ligne / Disponibles, Hors ligne, Caisse à verser)
+                            SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              physics: const BouncingScrollPhysics(),
+                              child: Row(
+                                children: [
+                                  _buildFilterChip('Tous', 'all', drivers.length, AmeexColors.primaryBlue, Icons.people_alt_rounded),
+                                  _buildFilterChip('En ligne (Disponibles)', 'online', onlineCount, const Color(0xFF10B981), Icons.check_circle_rounded),
+                                  _buildFilterChip('Hors ligne', 'offline', offlineCount, const Color(0xFF94A3B8), Icons.pause_circle_filled_rounded),
+                                  _buildFilterChip('Caisse à verser', 'caisse', caissePendingCount, const Color(0xFFD97706), Icons.monetization_on_rounded),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+
+                            if (filteredDrivers.isEmpty)
+                              Container(
+                                width: double.infinity,
+                                margin: const EdgeInsets.only(top: 8, bottom: 20),
+                                padding: const EdgeInsets.all(28),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(18),
+                                  boxShadow: AmeexDesign.shadowCard,
+                                ),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      _selectedFilter == 'caisse'
+                                          ? Icons.check_circle_rounded
+                                          : (_selectedFilter == 'online' ? Icons.wifi_off_rounded : Icons.people_outline_rounded),
+                                      size: 40,
+                                      color: _selectedFilter == 'caisse' ? const Color(0xFF10B981) : Colors.grey.shade400,
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Text(
+                                      _selectedFilter == 'caisse'
+                                          ? 'Toutes les caisses sont à jour !'
+                                          : (_selectedFilter == 'online'
+                                              ? 'Aucun livreur actuellement en ligne'
+                                              : 'Aucun livreur dans cette catégorie'),
+                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AmeexColors.textDark),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      _selectedFilter == 'caisse'
+                                          ? 'Aucun encaissement en attente pour le moment.'
+                                          : 'Sélectionnez "Tous" pour voir l\'ensemble des livreurs.',
+                                      style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ],
+                                ),
+                              )
+                            else
+                              ListView.separated(
+                                shrinkWrap: true,
+                                physics: const NeverScrollableScrollPhysics(),
+                                itemCount: filteredDrivers.length,
+                                separatorBuilder: (_, _) => const SizedBox(height: 12),
+                                itemBuilder: (context, index) {
+                              final d = filteredDrivers[index];
+                              final name = d['full_name'] ?? 'Livreur';
+                              final phone = d['phone'] ?? 'Non renseigné';
+                              final vehicle = d['vehicle_type'] ?? 'Moto / Scooter';
+                              final zone = d['zone'] ?? 'Casablanca';
+                              final dId = d['id'];
+
+                              final isOnline = d['is_online'] == true ||
+                                  d['status'] == 'online' ||
+                                  activeGpsDriverIds.contains(dId);
+
+                              final driverOrders = allOrders.where((o) => o['assigned_driver_id'] == dId).toList();
+                              final balances = CaisseRemittanceHelper.calculateBalances(driverOrders);
+                              final needsRemittance = balances.codToRemitToAgency > 0;
+                              final activeOrders = driverOrders.where((o) =>
+                                  o['status'] != 'delivered' && o['status'] != 'cancelled').length;
+
+                              return Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(18),
+                                  boxShadow: AmeexDesign.shadowCard,
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.all(2),
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            gradient: LinearGradient(
+                                              begin: Alignment.topLeft,
+                                              end: Alignment.bottomRight,
+                                              colors: [
+                                                (isOnline ? const Color(0xFF10B981) : AmeexColors.primaryBlue).withValues(alpha: 0.35),
+                                                (isOnline ? const Color(0xFF10B981) : AmeexColors.primaryBlue).withValues(alpha: 0.08),
+                                              ],
+                                            ),
+                                          ),
+                                          child: DriverAvatar(
+                                            driverData: d,
+                                            radius: 20,
+                                            borderColor: Colors.white,
+                                            borderWidth: 1.5,
+                                            showBadge: true,
+                                            badgeColor: isOnline ? const Color(0xFF10B981) : const Color(0xFF94A3B8),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                name,
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.w600,
+                                                  fontSize: 15,
+                                                  letterSpacing: -0.2,
+                                                  color: AmeexColors.textDark,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 3),
+                                              Row(
+                                                children: [
+                                                  const Icon(Icons.phone_outlined, size: 12, color: AmeexColors.textMuted),
+                                                  const SizedBox(width: 4),
+                                                  Text(
+                                                    phone,
+                                                    style: const TextStyle(
+                                                      color: AmeexColors.textMuted,
+                                                      fontSize: 12.5,
+                                                      fontWeight: FontWeight.w500,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                              const SizedBox(height: 5),
+                                              Row(
+                                                children: [
+                                                  Container(
+                                                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                                    decoration: BoxDecoration(
+                                                      color: isOnline ? const Color(0xFFDCFCE7) : const Color(0xFFF1F5F9),
+                                                      borderRadius: BorderRadius.circular(6),
+                                                      border: Border.all(
+                                                        color: isOnline ? const Color(0xFF86EFAC) : const Color(0xFFCBD5E1),
+                                                      ),
+                                                    ),
+                                                    child: Row(
+                                                      mainAxisSize: MainAxisSize.min,
+                                                      children: [
+                                                        Icon(
+                                                          Icons.circle,
+                                                          size: 6,
+                                                          color: isOnline ? const Color(0xFF15803D) : const Color(0xFF64748B),
+                                                        ),
+                                                        const SizedBox(width: 4),
+                                                        Text(
+                                                          isOnline ? 'En ligne · Disponible' : 'Hors ligne',
+                                                          style: TextStyle(
+                                                            fontSize: 10,
+                                                            fontWeight: FontWeight.bold,
+                                                            color: isOnline ? const Color(0xFF15803D) : const Color(0xFF64748B),
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ],
+                                          ),
+                                        ),
                                   // Direct delete button
                                   Material(
                                     color: Colors.transparent,
@@ -3183,6 +3399,8 @@ class AdminProfileTab extends StatelessWidget {
                     ),
                   ],
                 );
+                      },
+                    );
                   },
                 );
               },
