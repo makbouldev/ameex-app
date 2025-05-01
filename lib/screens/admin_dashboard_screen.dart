@@ -2875,11 +2875,7 @@ class _AdminProfileTabState extends State<AdminProfileTab> {
                           );
                         }
 
-                        // Compute Global Totals for All Drivers & Filter Counts
-                        double totalCaisseAll = 0.0;
-                        double totalRevenusAll = 0.0;
-                        int totalUnremittedColis = 0;
-
+                        // Filter Counts
                         int onlineCount = 0;
                         int offlineCount = 0;
                         int caissePendingCount = 0;
@@ -2888,9 +2884,6 @@ class _AdminProfileTabState extends State<AdminProfileTab> {
                           final dId = d['id'];
                           final dOrders = allOrders.where((o) => o['assigned_driver_id'] == dId).toList();
                           final b = CaisseRemittanceHelper.calculateBalances(dOrders);
-                          totalCaisseAll += b.codToRemitToAgency;
-                          totalRevenusAll += b.totalCommission;
-                          totalUnremittedColis += b.unremittedCount;
 
                           final isOnline = d['is_online'] == true ||
                               d['status'] == 'online' ||
@@ -2925,71 +2918,6 @@ class _AdminProfileTabState extends State<AdminProfileTab> {
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // Global Financial Summary Banner
-                            Container(
-                              margin: const EdgeInsets.only(bottom: 16),
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                gradient: const LinearGradient(
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                  colors: [AmeexColors.primaryBlue, Color(0xFF1E3A8A)],
-                                ),
-                                borderRadius: BorderRadius.circular(16),
-                                boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 3))],
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Row(
-                                    children: [
-                                      Icon(Icons.account_balance_rounded, color: Colors.white70, size: 18),
-                                      SizedBox(width: 8),
-                                      Text(
-                                        'SYNTHÈSE FINANCIÈRE DE L\'AGENCE',
-                                        style: TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 0.8),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 12),
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            const Text('Caisse totale à récupérer :', style: TextStyle(color: Colors.white70, fontSize: 11)),
-                                            const SizedBox(height: 4),
-                                            Text(
-                                              '${totalCaisseAll.toStringAsFixed(2)} MAD',
-                                              style: const TextStyle(color: Color(0xFFFBBF24), fontSize: 17, fontWeight: FontWeight.w800),
-                                            ),
-                                            Text('$totalUnremittedColis colis non encore versés', style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 9.5)),
-                                          ],
-                                        ),
-                                      ),
-                                      Container(width: 1, height: 40, color: Colors.white24),
-                                      const SizedBox(width: 14),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            const Text('Total revenus des livreurs :', style: TextStyle(color: Colors.white70, fontSize: 11)),
-                                            const SizedBox(height: 4),
-                                            Text(
-                                              '${totalRevenusAll.toStringAsFixed(2)} MAD',
-                                              style: const TextStyle(color: Color(0xFF4ADE80), fontSize: 17, fontWeight: FontWeight.w800),
-                                            ),
-                                            Text('Commissions cumulées', style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 9.5)),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-
                             // Filter Pills Bar (Tous, En ligne / Disponibles, Hors ligne, Caisse à verser)
                             SingleChildScrollView(
                               scrollDirection: Axis.horizontal,
