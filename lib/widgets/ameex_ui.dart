@@ -284,19 +284,20 @@ class _AmeexSkeletonState extends State<AmeexSkeleton>
   }
 }
 
-/// Wraps content with a minimum loading duration so the app feels
-/// like it's fetching real server data on first mount.
-/// After [minDuration] AND the child is ready, child is shown.
+/// Wraps content with a 2-second Ameex splash loading animation
+/// whenever switching tabs or loading pages.
 class AmeexInitialLoad extends StatefulWidget {
-  final Widget skeleton;
+  final Widget? skeleton;
   final Widget child;
   final Duration minDuration;
+  final String? message;
 
   const AmeexInitialLoad({
     super.key,
-    required this.skeleton,
+    this.skeleton,
     required this.child,
-    this.minDuration = const Duration(milliseconds: 1000),
+    this.minDuration = const Duration(seconds: 2),
+    this.message,
   });
 
   @override
@@ -317,11 +318,14 @@ class _AmeexInitialLoadState extends State<AmeexInitialLoad> {
   @override
   Widget build(BuildContext context) {
     return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 320),
+      duration: const Duration(milliseconds: 280),
       switchInCurve: Curves.easeOutCubic,
       child: _ready
           ? KeyedSubtree(key: const ValueKey('ready'), child: widget.child)
-          : KeyedSubtree(key: const ValueKey('loading'), child: widget.skeleton),
+          : KeyedSubtree(
+              key: const ValueKey('loading'),
+              child: AmeexSplashView(message: widget.message ?? 'Chargement…'),
+            ),
     );
   }
 }
@@ -641,18 +645,17 @@ extension _NumSqrt on double {
   }
 }
 
-/// Branded full-screen splash — elegant pulsing brand-blue core
-/// surrounded by expanding rings. Used during auth/profile loading
-/// and other blocking transitions.
-class AmeexSplash extends StatefulWidget {
-  final String? message;
-  const AmeexSplash({super.key, this.message});
+/// Branded Ameex splash / loading view with animated expanding rings
+/// and the glowing Ameex orb.
+class AmeexSplashView extends StatefulWidget {
+  final String message;
+  const AmeexSplashView({super.key, this.message = 'Chargement…'});
 
   @override
-  State<AmeexSplash> createState() => _AmeexSplashState();
+  State<AmeexSplashView> createState() => _AmeexSplashViewState();
 }
 
-class _AmeexSplashState extends State<AmeexSplash>
+class _AmeexSplashViewState extends State<AmeexSplashView>
     with SingleTickerProviderStateMixin {
   late final AnimationController _ctrl;
 
@@ -661,7 +664,7 @@ class _AmeexSplashState extends State<AmeexSplash>
     super.initState();
     _ctrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1800),
+      duration: const Duration(milliseconds: 1600),
     )..repeat();
   }
 
@@ -673,80 +676,116 @@ class _AmeexSplashState extends State<AmeexSplash>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AmeexColors.background,
-      body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox(
-              width: 120, height: 120,
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  // Single expanding ring (half the CPU of two)
-                  AnimatedBuilder(
-                    animation: _ctrl,
-                    builder: (context, _) {
-                      final t = _ctrl.value;
-                      final size = 44 + (72 * t);
-                      final opacity = (1 - t).clamp(0.0, 1.0) * 0.45;
-                      return Container(
-                        width: size,
-                        height: size,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: AmeexColors.primaryBlue
-                                .withValues(alpha: opacity),
-                            width: 1.4,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                  // Static core (no scale animation)
-                  Container(
-                    width: 44, height: 44,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: const LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          Color(0xFF1E3A8A),
-                          AmeexColors.primaryBlue,
-                          AmeexColors.darkNavy,
-                        ],
-                      ),
-                      boxShadow: AmeexDesign.shadowHero,
-                    ),
-                    alignment: Alignment.center,
-                    child: Container(
-                      width: 14, height: 14,
+    return Container(
+      color: AmeexColors.background,
+      alignment: Alignment.center,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 120,
+            height: 120,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                // Expanding ring 1
+                AnimatedBuilder(
+                  animation: _ctrl,
+                  builder: (context, _) {
+                    final t = _ctrl.value;
+                    final size = 44 + (72 * t);
+                    final opacity = (1 - t).clamp(0.0, 1.0) * 0.45;
+                    return Container(
+                      width: size,
+                      height: size,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: Colors.white.withValues(alpha: 0.9),
+                        border: Border.all(
+                          color: AmeexColors.primaryBlue.withValues(alpha: opacity),
+                          width: 1.5,
+                        ),
                       ),
+                    );
+                  },
+                ),
+                // Expanding ring 2 (offset phase)
+                AnimatedBuilder(
+                  animation: _ctrl,
+                  builder: (context, _) {
+                    final t = (_ctrl.value + 0.5) % 1.0;
+                    final size = 44 + (72 * t);
+                    final opacity = (1 - t).clamp(0.0, 1.0) * 0.35;
+                    return Container(
+                      width: size,
+                      height: size,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: AmeexColors.primaryBlue.withValues(alpha: opacity),
+                          width: 1.2,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                // Core Ameex orb with glow
+                Container(
+                  width: 46,
+                  height: 46,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: const LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        Color(0xFF1E3A8A),
+                        AmeexColors.primaryBlue,
+                        AmeexColors.darkNavy,
+                      ],
+                    ),
+                    boxShadow: AmeexDesign.shadowHero,
+                  ),
+                  alignment: Alignment.center,
+                  child: Container(
+                    width: 15,
+                    height: 15,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white.withValues(alpha: 0.95),
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-            const SizedBox(height: 28),
-            Text(
-              widget.message ?? 'Chargement…',
-              style: const TextStyle(
-                fontFamily: AmeexTheme.fontFamily,
-                color: AmeexColors.textMuted,
-                fontSize: 13.5,
-                fontWeight: FontWeight.w500,
-                letterSpacing: 0.3,
-              ),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            widget.message,
+            style: const TextStyle(
+              fontFamily: AmeexTheme.fontFamily,
+              color: AmeexColors.textMuted,
+              fontSize: 13.5,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.3,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
+    );
+  }
+}
+
+/// Full-screen branded splash / loading screen with the Ameex orb
+/// surrounded by expanding rings. Used during auth/profile loading.
+class AmeexSplash extends StatelessWidget {
+  final String? message;
+  const AmeexSplash({super.key, this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AmeexColors.background,
+      body: AmeexSplashView(message: message ?? 'Chargement…'),
     );
   }
 }

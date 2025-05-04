@@ -54,19 +54,22 @@ class AuthGate extends StatelessWidget {
           return const LoginScreen();
         }
 
-        // Fetch User Profile Role from 'profiles' table
-        return FutureBuilder<Map<String, dynamic>?>(
-          future: supabase
-              .from('profiles')
-              .select('role')
-              .eq('id', session.user.id)
-              .maybeSingle(),
+        // Fetch User Profile Role from 'profiles' table with minimum 2-second splash
+        return FutureBuilder<List<dynamic>>(
+          future: Future.wait([
+            supabase
+                .from('profiles')
+                .select('role')
+                .eq('id', session.user.id)
+                .maybeSingle(),
+            Future.delayed(const Duration(seconds: 2)),
+          ]),
           builder: (context, profileSnapshot) {
             if (profileSnapshot.connectionState == ConnectionState.waiting) {
               return const AmeexSplash();
             }
 
-            final data = profileSnapshot.data;
+            final data = profileSnapshot.data?[0] as Map<String, dynamic>?;
             final role = data?['role']?.toString();
             final email = session.user.email ?? '';
 
