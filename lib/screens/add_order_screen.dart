@@ -502,62 +502,6 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
 
               const SizedBox(height: 16),
 
-              // 1. bis Ville de livraison
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  _buildLabel('Ville de livraison'),
-                  Text(
-                    'Filtre livreurs par ville',
-                    style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 6),
-              Container(
-                decoration: _fieldBoxDecoration(),
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    value: _selectedCity,
-                    isExpanded: true,
-                    icon: const Icon(Icons.keyboard_arrow_down, color: Colors.black54),
-                    items: _cities.map((city) {
-                      return DropdownMenuItem(
-                        value: city,
-                        child: Row(
-                          children: [
-                            Icon(
-                              city == 'Toutes les villes' ? Icons.map_rounded : Icons.location_city_rounded,
-                              size: 16,
-                              color: city == 'Toutes les villes' ? Colors.grey : AmeexColors.primaryBlue,
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                city,
-                                style: const TextStyle(fontSize: 13, color: Color(0xFF0F172A), fontWeight: FontWeight.w500),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    }).toList(),
-                    onChanged: (val) {
-                      if (val != null) {
-                        setState(() {
-                          _selectedCity = val;
-                          _syncSelectedDriverWithFilter();
-                        });
-                      }
-                    },
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 16),
-
               // 2. Nom du client
               _buildLabel('Nom du client'),
               const SizedBox(height: 6),
@@ -640,33 +584,49 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
 
               const SizedBox(height: 16),
 
-              // 5. Ville choisie
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildLabel('Ville de livraison'),
-                        const SizedBox(height: 6),
-                        Container(
-                          decoration: _fieldBoxDecoration(),
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.location_city_rounded, size: 18, color: AmeexColors.primaryBlue),
-                              const SizedBox(width: 8),
-                              Text(
-                                _selectedCity == 'Toutes les villes' ? 'Casablanca' : _selectedCity,
-                                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+              // 5. Ville de livraison (Dropdown)
+              _buildLabel('Ville de livraison'),
+              const SizedBox(height: 6),
+              Container(
+                decoration: _fieldBoxDecoration(),
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: _selectedCity,
+                    isExpanded: true,
+                    icon: const Icon(Icons.keyboard_arrow_down, color: Colors.black54),
+                    items: _cities.map((city) {
+                      return DropdownMenuItem(
+                        value: city,
+                        child: Row(
+                          children: [
+                            Icon(
+                              city == 'Toutes les villes' ? Icons.map_rounded : Icons.location_city_rounded,
+                              size: 16,
+                              color: city == 'Toutes les villes' ? Colors.grey : AmeexColors.primaryBlue,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                city,
+                                style: const TextStyle(fontSize: 13, color: Color(0xFF0F172A), fontWeight: FontWeight.w500),
+                                overflow: TextOverflow.ellipsis,
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
+                      );
+                    }).toList(),
+                    onChanged: (val) {
+                      if (val != null) {
+                        setState(() {
+                          _selectedCity = val;
+                          _syncSelectedDriverWithFilter();
+                        });
+                      }
+                    },
                   ),
-                ],
+                ),
               ),
 
               const SizedBox(height: 16),
