@@ -759,20 +759,38 @@ class _DriverLiveMapTabState extends State<DriverLiveMapTab> {
   Future<void> _acceptMissionGoToAgency() async {
     if (_currentOrder == null) return;
     try {
-      // Set status to accepted
+      final orderId = _currentOrder!['id'];
+      final rawAddr = _currentOrder!['delivery_address']?.toString() ?? '';
+      final taggedAddr = rawAddr.contains('[ETAT: ACCEPTE_ATTENTE_AGENCE]')
+          ? rawAddr
+          : '$rawAddr [ETAT: ACCEPTE_ATTENTE_AGENCE]';
+
+      // 1. Try updating status to 'accepted' AND tagging address
       try {
         await supabase
             .from('orders')
-            .update({'status': 'accepted'})
-            .eq('id', _currentOrder!['id']);
+            .update({
+              'status': 'accepted',
+              'delivery_address': taggedAddr,
+            })
+            .eq('id', orderId);
       } catch (_) {
-        // Fallback: If enum 'accepted' not added, use delivery_address tag
+        // Fallback: If enum 'accepted' not added in Postgres, update delivery_address tag
         await supabase.from('orders').update({
-          'delivery_address': '${_currentOrder!['delivery_address'] ?? ''} [ETAT: ACCEPTE_ATTENTE_AGENCE]',
-        }).eq('id', _currentOrder!['id']);
+          'delivery_address': taggedAddr,
+        }).eq('id', orderId);
       }
 
       if (mounted) {
+        setState(() {
+          if (_currentOrder != null) {
+            _currentOrder = {
+              ..._currentOrder!,
+              'status': 'accepted',
+              'delivery_address': taggedAddr,
+            };
+          }
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Mission acceptée ! Rendez-vous à l\'agence pour récupérer le colis.'),

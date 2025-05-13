@@ -294,6 +294,146 @@ class _AdminDashboardHomeTabState extends State<AdminDashboardHomeTab> {
                         delivered: deliveredCount,
                       ),
 
+                      // ALERT BANNER: Commandes acceptées par le livreur en attente de remise à l'agence
+                      ...(() {
+                        final acceptedWaitingOrders = orders.where((o) {
+                          final rawAddr = o['delivery_address']?.toString() ?? '';
+                          return o['status'] == 'accepted' ||
+                              rawAddr.contains('[ETAT: ACCEPTE_ATTENTE_AGENCE]') ||
+                              rawAddr.contains('ACCEPTE_ATTENTE_AGENCE');
+                        }).toList();
+
+                        if (acceptedWaitingOrders.isEmpty) return <Widget>[];
+
+                        return <Widget>[
+                          const SizedBox(height: 14),
+                          Container(
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFFFBEB),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: const Color(0xFFF59E0B), width: 1.5),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFFF59E0B).withValues(alpha: 0.12),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(6),
+                                      decoration: const BoxDecoration(
+                                        color: Color(0xFFD97706),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(Icons.handshake_rounded, color: Colors.white, size: 16),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        '${acceptedWaitingOrders.length} Colis en attente de remise au livreur',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 13.5,
+                                          color: Color(0xFF92400E),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 6),
+                                const Text(
+                                  'Le livreur a accepté la mission et attend le colis à l\'agence. Remettez-lui le colis et validez pour qu\'il parte faire sa livraison.',
+                                  style: TextStyle(fontSize: 12, color: Color(0xFF78350F), height: 1.3),
+                                ),
+                                const SizedBox(height: 10),
+                                ...acceptedWaitingOrders.map((waitingOrder) {
+                                  final wId = waitingOrder['id'];
+                                  final wTracking = waitingOrder['tracking_number'] ?? '#AMX';
+                                  final wCustomer = waitingOrder['customer_name'] ?? 'Client';
+                                  final wRawAddr = waitingOrder['delivery_address']?.toString() ?? '';
+                                  final wAmount = waitingOrder['amount'] ?? 0;
+
+                                  return Container(
+                                    margin: const EdgeInsets.only(top: 8),
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(color: const Color(0xFFFDE68A)),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                '$wTracking • $wCustomer ($wAmount MAD)',
+                                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF0F172A)),
+                                              ),
+                                              const SizedBox(height: 2),
+                                              const Text(
+                                                'Livreur prêt pour la remise',
+                                                style: TextStyle(fontSize: 11.5, color: Color(0xFFB45309), fontWeight: FontWeight.w500),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        ElevatedButton.icon(
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: const Color(0xFF10B981),
+                                            foregroundColor: Colors.white,
+                                            elevation: 0,
+                                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                          ),
+                                          icon: const Icon(Icons.check_circle_outline, size: 16),
+                                          label: const Text('Remis au livreur', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5)),
+                                          onPressed: () async {
+                                            try {
+                                              final cleanRaw = wRawAddr
+                                                  .replaceAll('[ETAT: ACCEPTE_ATTENTE_AGENCE]', '')
+                                                  .replaceAll('  ', ' ')
+                                                  .trim();
+                                              await supabase.from('orders').update({
+                                                'status': 'in_transit',
+                                                'delivery_address': '$cleanRaw [COLIS_REMIS_PAR_ADMIN]',
+                                              }).eq('id', wId);
+
+                                              if (context.mounted) {
+                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                  const SnackBar(
+                                                    content: Text('Colis remis au livreur ! Il peut maintenant démarrer son trajet client.'),
+                                                    backgroundColor: Color(0xFF10B981),
+                                                  ),
+                                                );
+                                              }
+                                            } catch (e) {
+                                              if (context.mounted) {
+                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                  SnackBar(content: Text('Erreur: $e'), backgroundColor: Colors.redAccent),
+                                                );
+                                              }
+                                            }
+                                          },
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                }),
+                              ],
+                            ),
+                          ),
+                        ];
+                      })(),
+
                       const SizedBox(height: 14),
 
                       // ==== DATA STRIP with sparklines ====
@@ -1466,15 +1606,35 @@ class _AdminOrdersTabState extends State<AdminOrdersTab> {
           }
 
           final orders = snapshot.data ?? [];
+          final acceptedCount = orders.where((o) {
+            final rawAddr = o['delivery_address']?.toString() ?? '';
+            return o['status'] == 'accepted' ||
+                rawAddr.contains('[ETAT: ACCEPTE_ATTENTE_AGENCE]') ||
+                rawAddr.contains('ACCEPTE_ATTENTE_AGENCE');
+          }).length;
+
           final counts = <String, int>{
             'all': orders.length,
-            'pending': orders.where((o) => o['status'] == 'pending').length,
+            'accepted': acceptedCount,
+            'pending': orders.where((o) {
+              final rawAddr = o['delivery_address']?.toString() ?? '';
+              final isAcc = o['status'] == 'accepted' ||
+                  rawAddr.contains('[ETAT: ACCEPTE_ATTENTE_AGENCE]') ||
+                  rawAddr.contains('ACCEPTE_ATTENTE_AGENCE');
+              return o['status'] == 'pending' && !isAcc;
+            }).length,
             'in_transit': orders.where((o) => o['status'] == 'in_transit').length,
             'delivered': orders.where((o) => o['status'] == 'delivered').length,
             'cancelled': orders.where((o) => o['status'] == 'cancelled').length,
           };
           final filtered = orders.where((o) {
             if (_selectedStatusFilter == 'all') return true;
+            final rawAddr = o['delivery_address']?.toString() ?? '';
+            final isAcc = o['status'] == 'accepted' ||
+                rawAddr.contains('[ETAT: ACCEPTE_ATTENTE_AGENCE]') ||
+                rawAddr.contains('ACCEPTE_ATTENTE_AGENCE');
+            if (_selectedStatusFilter == 'accepted') return isAcc;
+            if (_selectedStatusFilter == 'pending') return o['status'] == 'pending' && !isAcc;
             return o['status'] == _selectedStatusFilter;
           }).toList();
 
@@ -1488,11 +1648,12 @@ class _AdminOrdersTabState extends State<AdminOrdersTab> {
                   scrollDirection: Axis.horizontal,
                   padding: const EdgeInsets.fromLTRB(20, 10, 20, 10),
                   children: [
-                    _buildFilterChip('Toutes',    'all',        counts['all']!),
-                    _buildFilterChip('En attente','pending',    counts['pending']!),
-                    _buildFilterChip('En transit','in_transit', counts['in_transit']!),
-                    _buildFilterChip('Livrées',   'delivered',  counts['delivered']!),
-                    _buildFilterChip('Annulées',  'cancelled',  counts['cancelled']!),
+                    _buildFilterChip('Toutes',                 'all',        counts['all']!),
+                    _buildFilterChip('À l\'agence (Acceptées)', 'accepted',   counts['accepted']!),
+                    _buildFilterChip('En attente',             'pending',    counts['pending']!),
+                    _buildFilterChip('En transit',             'in_transit', counts['in_transit']!),
+                    _buildFilterChip('Livrées',                'delivered',  counts['delivered']!),
+                    _buildFilterChip('Annulées',               'cancelled',  counts['cancelled']!),
                   ],
                 ),
               ),
@@ -3559,7 +3720,9 @@ Widget _buildOrderCard(BuildContext context, Map<String, dynamic> order, Color d
   final tracking = order['tracking_number'] ?? '#AMX';
 
   final bool isCancelled = status == 'cancelled';
-  final bool isAcceptedWaitingAgency = status == 'accepted' || address.toString().contains('[ETAT: ACCEPTE_ATTENTE_AGENCE]');
+  final bool isAcceptedWaitingAgency = status == 'accepted' ||
+      rawAddress.toString().contains('[ETAT: ACCEPTE_ATTENTE_AGENCE]') ||
+      rawAddress.toString().contains('ACCEPTE_ATTENTE_AGENCE');
   final effectiveStatus = isAcceptedWaitingAgency ? 'accepted' : status;
 
   return AmeexFadeSlideIn(
@@ -3847,48 +4010,66 @@ Widget _buildOrderCard(BuildContext context, Map<String, dynamic> order, Color d
 
           // ACTION BOUTON POUR L'ADMIN : CONFIRMER LA REMISE DU COLIS À L'AGENCE
           if (isAcceptedWaitingAgency) ...[
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: const Color(0xFFFAFAFB),
-                borderRadius: BorderRadius.circular(12),
+                color: const Color(0xFFFFFBEB),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFFF59E0B), width: 1.5),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
-                    children: const [
-                      Icon(Icons.schedule_rounded, size: 14, color: Color(0xFFD97706)),
-                      SizedBox(width: 6),
-                      Expanded(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFD97706),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.handshake_rounded, size: 16, color: Colors.white),
+                      ),
+                      const SizedBox(width: 8),
+                      const Expanded(
                         child: Text(
-                          'Livreur en route vers l\'agence pour récupérer le colis.',
-                          style: TextStyle(fontSize: 12.5, color: Color(0xFF374151), fontWeight: FontWeight.w500),
+                          'Livreur prêt pour récupérer le colis à l\'agence',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF92400E)),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'Le livreur a accepté la commande. Dès que vous lui remettez le colis, validez ci-dessous pour qu\'il puisse démarrer sa course vers le client.',
+                    style: TextStyle(fontSize: 12, color: Color(0xFF78350F), height: 1.3),
+                  ),
+                  const SizedBox(height: 12),
                   SizedBox(
                     width: double.infinity,
-                    height: 42,
-                    child: ElevatedButton(
+                    height: 44,
+                    child: ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AmeexColors.primaryBlue,
+                        backgroundColor: const Color(0xFF10B981),
                         foregroundColor: Colors.white,
                         elevation: 0,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                       ),
-                      child: const Text(
-                        'Confirmer la remise au livreur',
-                        style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                      icon: const Icon(Icons.check_circle_rounded, size: 20),
+                      label: const Text(
+                        'Confirmer la remise du colis au livreur',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
                       ),
                       onPressed: () async {
                         try {
+                          final cleanRaw = rawAddress.toString()
+                              .replaceAll('[ETAT: ACCEPTE_ATTENTE_AGENCE]', '')
+                              .replaceAll('  ', ' ')
+                              .trim();
                           await supabase.from('orders').update({
                             'status': 'in_transit',
-                            'delivery_address': '${address.toString().replaceAll('[ETAT: ACCEPTE_ATTENTE_AGENCE]', '')} [COLIS_REMIS_PAR_ADMIN]',
+                            'delivery_address': '$cleanRaw [COLIS_REMIS_PAR_ADMIN]',
                           }).eq('id', orderId);
 
                           if (context.mounted) {
@@ -4040,7 +4221,7 @@ Widget _buildStatusBadge(String status) {
       break;
     case 'accepted':
       dot = const Color(0xFFF59E0B);
-      label = 'En attente';
+      label = 'À l\'agence · Remise colis';
       break;
     case 'cancelled':
       dot = const Color(0xFFDC2626);
