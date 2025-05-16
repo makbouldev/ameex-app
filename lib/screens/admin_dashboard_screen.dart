@@ -3036,6 +3036,20 @@ class _AdminProfileTabState extends State<AdminProfileTab> {
                           );
                         }
 
+                        // Helper to check if driver is online
+                        bool isDriverOnline(Map<String, dynamic> d) {
+                          final dId = d['id'];
+                          if (d['is_online'] == true || d['status'] == 'online') return true;
+                          final z = (d['zone'] ?? '').toString();
+                          if (z.contains('[STATUS:online]') || z.contains('[ONLINE]')) return true;
+                          if (activeGpsDriverIds.contains(dId)) return true;
+                          final hasActiveOrder = allOrders.any((o) =>
+                              o['assigned_driver_id'] == dId &&
+                              (o['status'] == 'in_transit' || o['status'] == 'accepted'));
+                          if (hasActiveOrder) return true;
+                          return false;
+                        }
+
                         // Filter Counts
                         int onlineCount = 0;
                         int offlineCount = 0;
@@ -3046,10 +3060,7 @@ class _AdminProfileTabState extends State<AdminProfileTab> {
                           final dOrders = allOrders.where((o) => o['assigned_driver_id'] == dId).toList();
                           final b = CaisseRemittanceHelper.calculateBalances(dOrders);
 
-                          final isOnline = d['is_online'] == true ||
-                              d['status'] == 'online' ||
-                              activeGpsDriverIds.contains(dId);
-                          if (isOnline) {
+                          if (isDriverOnline(d)) {
                             onlineCount++;
                           } else {
                             offlineCount++;
@@ -3062,11 +3073,8 @@ class _AdminProfileTabState extends State<AdminProfileTab> {
 
                         // Filtered Drivers list based on _selectedFilter
                         final filteredDrivers = drivers.where((d) {
-                          final dId = d['id'];
-                          final isOnline = d['is_online'] == true ||
-                              d['status'] == 'online' ||
-                              activeGpsDriverIds.contains(dId);
-                          final dOrders = allOrders.where((o) => o['assigned_driver_id'] == dId).toList();
+                          final isOnline = isDriverOnline(d);
+                          final dOrders = allOrders.where((o) => o['assigned_driver_id'] == d['id']).toList();
                           final b = CaisseRemittanceHelper.calculateBalances(dOrders);
                           final needsRemittance = b.codToRemitToAgency > 0;
 
@@ -3148,9 +3156,7 @@ class _AdminProfileTabState extends State<AdminProfileTab> {
                               final zone = d['zone'] ?? 'Casablanca';
                               final dId = d['id'];
 
-                              final isOnline = d['is_online'] == true ||
-                                  d['status'] == 'online' ||
-                                  activeGpsDriverIds.contains(dId);
+                              final isOnline = isDriverOnline(d);
 
                               final driverOrders = allOrders.where((o) => o['assigned_driver_id'] == dId).toList();
                               final balances = CaisseRemittanceHelper.calculateBalances(driverOrders);
@@ -3226,33 +3232,82 @@ class _AdminProfileTabState extends State<AdminProfileTab> {
                                               const SizedBox(height: 5),
                                               Row(
                                                 children: [
-                                                  Container(
-                                                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                                                    decoration: BoxDecoration(
-                                                      color: isOnline ? const Color(0xFFDCFCE7) : const Color(0xFFF1F5F9),
+                                                  Material(
+                                                    color: Colors.transparent,
+                                                    child: InkWell(
                                                       borderRadius: BorderRadius.circular(6),
-                                                      border: Border.all(
-                                                        color: isOnline ? const Color(0xFF86EFAC) : const Color(0xFFCBD5E1),
-                                                      ),
-                                                    ),
-                                                    child: Row(
-                                                      mainAxisSize: MainAxisSize.min,
-                                                      children: [
-                                                        Icon(
-                                                          Icons.circle,
-                                                          size: 6,
-                                                          color: isOnline ? const Color(0xFF15803D) : const Color(0xFF64748B),
-                                                        ),
-                                                        const SizedBox(width: 4),
-                                                        Text(
-                                                          isOnline ? 'En ligne · Disponible' : 'Hors ligne',
-                                                          style: TextStyle(
-                                                            fontSize: 10,
-                                                            fontWeight: FontWeight.bold,
-                                                            color: isOnline ? const Color(0xFF15803D) : const Color(0xFF64748B),
+                                                      onTap: () async {
+                                                        final nextStatus = !isOnline;
+                                                        final currentZone = (d['zone'] ?? '').toString();
+                                                        final cleanZone = currentZone
+                                                            .replaceAll(RegExp(r'\[STATUS:[^\]]+\]'), '')
+                                                            .replaceAll('[ONLINE]', '')
+                                                            .replaceAll('[OFFLINE]', '')
+                                                            .trim();
+                                                        final newZone = ' [STATUS:]';
+
+                                                        try {
+                                                          try {
+                                                            await supabase.from('profiles').update({
+                                                              'is_online': nextStatus,
+                                                              'status': nextStatus ? 'online' : 'offline',
+                                                              'zone': newZone,
+                                                            }).eq('id', dId);
+                                                          } catch (_) {
+                                                            await supabase.from('profiles').update({
+                                                              'zone': newZone,
+                                                            }).eq('id', dId);
+                                                          }
+
+                                                          if (context.mounted) {
+                                                            ScaffoldMessenger.of(context).showSnackBar(
+                                                              SnackBar(
+                                                                content: Text(nextStatus
+                                                                    ? ' est maintenant En ligne (Disponible) !'
+                                                                    : ' est maintenant Hors ligne.'),
+                                                                backgroundColor: nextStatus ? const Color(0xFF10B981) : const Color(0xFF64748B),
+                                                                duration: const Duration(seconds: 2),
+                                                                behavior: SnackBarBehavior.floating,
+                                                              ),
+                                                            );
+                                                          }
+                                                        } catch (_) {}
+                                                      },
+                                                      child: Container(
+                                                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                                                        decoration: BoxDecoration(
+                                                          color: isOnline ? const Color(0xFFDCFCE7) : const Color(0xFFF1F5F9),
+                                                          borderRadius: BorderRadius.circular(6),
+                                                          border: Border.all(
+                                                            color: isOnline ? const Color(0xFF86EFAC) : const Color(0xFFCBD5E1),
                                                           ),
                                                         ),
-                                                      ],
+                                                        child: Row(
+                                                          mainAxisSize: MainAxisSize.min,
+                                                          children: [
+                                                            Icon(
+                                                              Icons.circle,
+                                                              size: 6,
+                                                              color: isOnline ? const Color(0xFF15803D) : const Color(0xFF64748B),
+                                                            ),
+                                                            const SizedBox(width: 4),
+                                                            Text(
+                                                              isOnline ? 'En ligne · Disponible' : 'Hors ligne',
+                                                              style: TextStyle(
+                                                                fontSize: 10,
+                                                                fontWeight: FontWeight.bold,
+                                                                color: isOnline ? const Color(0xFF15803D) : const Color(0xFF64748B),
+                                                              ),
+                                                            ),
+                                                            const SizedBox(width: 4),
+                                                            Icon(
+                                                              Icons.touch_app_outlined,
+                                                              size: 10,
+                                                              color: isOnline ? const Color(0xFF15803D).withValues(alpha: 0.7) : const Color(0xFF64748B).withValues(alpha: 0.7),
+                                                            ),
+                                                          ],
+                                                        ),
+                                                      ),
                                                     ),
                                                   ),
                                                 ],

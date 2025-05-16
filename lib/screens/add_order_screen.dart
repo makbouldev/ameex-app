@@ -113,7 +113,11 @@ class _AddOrderScreenState extends State<AddOrderScreen> {
       for (final d in data) {
         final dId = d['id'] as String?;
         if (dId != null) {
-          if (d['is_online'] == true || d['status'] == 'online') {
+          final zone = (d['zone'] ?? '').toString();
+          if (d['is_online'] == true ||
+              d['status'] == 'online' ||
+              zone.contains('[STATUS:online]') ||
+              zone.contains('[ONLINE]')) {
             onlineIds.add(dId);
           }
         }

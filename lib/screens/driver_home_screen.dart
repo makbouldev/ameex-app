@@ -153,10 +153,15 @@ class _DriverLiveMapTabState extends State<DriverLiveMapTab> {
         if (mounted && p != null) {
           setState(() {
             _driverProfile = p;
+            final zone = (p['zone'] ?? '').toString();
             if (p['is_online'] != null) {
               _isDriverOnline = p['is_online'] == true;
             } else if (p['status'] != null) {
               _isDriverOnline = p['status'] == 'online';
+            } else if (zone.contains('[STATUS:online]') || zone.contains('[ONLINE]')) {
+              _isDriverOnline = true;
+            } else if (zone.contains('[STATUS:offline]') || zone.contains('[OFFLINE]')) {
+              _isDriverOnline = false;
             }
           });
         }
@@ -423,16 +428,31 @@ class _DriverLiveMapTabState extends State<DriverLiveMapTab> {
     final user = supabase.auth.currentUser;
     if (user == null) return;
 
+    final currentZone = (_driverProfile?['zone'] ?? '').toString();
+    final cleanZone = currentZone
+        .replaceAll(RegExp(r'\[STATUS:[^\]]+\]'), '')
+        .replaceAll('[ONLINE]', '')
+        .replaceAll('[OFFLINE]', '')
+        .trim();
+    final newZone = '$cleanZone [STATUS:${val ? 'online' : 'offline'}]';
+
     try {
       try {
         await supabase.from('profiles').update({
           'is_online': val,
           'status': val ? 'online' : 'offline',
+          'zone': newZone,
         }).eq('id', user.id);
       } catch (_) {
         await supabase.from('profiles').update({
-          'status': val ? 'online' : 'offline',
+          'zone': newZone,
         }).eq('id', user.id);
+      }
+
+      if (_driverProfile != null) {
+        _driverProfile!['zone'] = newZone;
+        _driverProfile!['is_online'] = val;
+        _driverProfile!['status'] = val ? 'online' : 'offline';
       }
 
       if (val) {
