@@ -2194,7 +2194,7 @@ class _DriverLiveMapTabState extends State<DriverLiveMapTab> {
 
                       // ACTIONS ACCORDING TO STAGES:
                       // 1. Initial State: Swipe to accept mission
-                      if (rawStatus == 'pending') ...[
+                      if (rawStatus == 'pending' && !isAcceptedWaitingAgency) ...[
                         SwipeableButtonView(
                           isFinished: _isSwipeFinished,
                           onWaitingProcess: () {
@@ -2212,6 +2212,56 @@ class _DriverLiveMapTabState extends State<DriverLiveMapTab> {
                           ),
                           buttonText: 'Glisser pour accepter la mission',
                           buttontextstyle: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
+                        ),
+                      ] else if (isAcceptedWaitingAgency) ...[
+                        // 2. Mission acceptée: Barre verte "Récupérer le colis à l'agence"
+                        Container(
+                          width: double.infinity,
+                          height: 52,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF10B981), // Vert vif
+                            borderRadius: BorderRadius.circular(14),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFF10B981).withValues(alpha: 0.35),
+                                blurRadius: 10,
+                                offset: const Offset(0, 3),
+                              ),
+                            ],
+                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(6),
+                                decoration: const BoxDecoration(
+                                  color: Colors.white,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.storefront_rounded, color: Color(0xFF10B981), size: 20),
+                              ),
+                              const SizedBox(width: 12),
+                              const Expanded(
+                                child: Text(
+                                  'Récupérer le colis à l\'agence Ameex',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 13.5,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 0.2,
+                                  ),
+                                ),
+                              ),
+                              Container(
+                                width: 8, height: 8,
+                                decoration: const BoxDecoration(
+                                  color: Colors.white,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ] else if (isInTransitDelivering) ...[
                         Row(

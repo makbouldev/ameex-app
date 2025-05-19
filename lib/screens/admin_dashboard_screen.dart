@@ -294,146 +294,6 @@ class _AdminDashboardHomeTabState extends State<AdminDashboardHomeTab> {
                         delivered: deliveredCount,
                       ),
 
-                      // ALERT BANNER: Commandes acceptées par le livreur en attente de remise à l'agence
-                      ...(() {
-                        final acceptedWaitingOrders = orders.where((o) {
-                          final rawAddr = o['delivery_address']?.toString() ?? '';
-                          return o['status'] == 'accepted' ||
-                              rawAddr.contains('[ETAT: ACCEPTE_ATTENTE_AGENCE]') ||
-                              rawAddr.contains('ACCEPTE_ATTENTE_AGENCE');
-                        }).toList();
-
-                        if (acceptedWaitingOrders.isEmpty) return <Widget>[];
-
-                        return <Widget>[
-                          const SizedBox(height: 14),
-                          Container(
-                            padding: const EdgeInsets.all(14),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFFFFBEB),
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: const Color(0xFFF59E0B), width: 1.5),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: const Color(0xFFF59E0B).withValues(alpha: 0.12),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 3),
-                                ),
-                              ],
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.all(6),
-                                      decoration: const BoxDecoration(
-                                        color: Color(0xFFD97706),
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: const Icon(Icons.handshake_rounded, color: Colors.white, size: 16),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: Text(
-                                        '${acceptedWaitingOrders.length} Colis en attente de remise au livreur',
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 13.5,
-                                          color: Color(0xFF92400E),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 6),
-                                const Text(
-                                  'Le livreur a accepté la mission et attend le colis à l\'agence. Remettez-lui le colis et validez pour qu\'il parte faire sa livraison.',
-                                  style: TextStyle(fontSize: 12, color: Color(0xFF78350F), height: 1.3),
-                                ),
-                                const SizedBox(height: 10),
-                                ...acceptedWaitingOrders.map((waitingOrder) {
-                                  final wId = waitingOrder['id'];
-                                  final wTracking = waitingOrder['tracking_number'] ?? '#AMX';
-                                  final wCustomer = waitingOrder['customer_name'] ?? 'Client';
-                                  final wRawAddr = waitingOrder['delivery_address']?.toString() ?? '';
-                                  final wAmount = waitingOrder['amount'] ?? 0;
-
-                                  return Container(
-                                    margin: const EdgeInsets.only(top: 8),
-                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(color: const Color(0xFFFDE68A)),
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                '$wTracking • $wCustomer ($wAmount MAD)',
-                                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF0F172A)),
-                                              ),
-                                              const SizedBox(height: 2),
-                                              const Text(
-                                                'Livreur prêt pour la remise',
-                                                style: TextStyle(fontSize: 11.5, color: Color(0xFFB45309), fontWeight: FontWeight.w500),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                        ElevatedButton.icon(
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor: const Color(0xFF10B981),
-                                            foregroundColor: Colors.white,
-                                            elevation: 0,
-                                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                          ),
-                                          icon: const Icon(Icons.check_circle_outline, size: 16),
-                                          label: const Text('Remis au livreur', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5)),
-                                          onPressed: () async {
-                                            try {
-                                              final cleanRaw = wRawAddr
-                                                  .replaceAll('[ETAT: ACCEPTE_ATTENTE_AGENCE]', '')
-                                                  .replaceAll('  ', ' ')
-                                                  .trim();
-                                              await supabase.from('orders').update({
-                                                'status': 'in_transit',
-                                                'delivery_address': '$cleanRaw [COLIS_REMIS_PAR_ADMIN]',
-                                              }).eq('id', wId);
-
-                                              if (context.mounted) {
-                                                ScaffoldMessenger.of(context).showSnackBar(
-                                                  const SnackBar(
-                                                    content: Text('Colis remis au livreur ! Il peut maintenant démarrer son trajet client.'),
-                                                    backgroundColor: Color(0xFF10B981),
-                                                  ),
-                                                );
-                                              }
-                                            } catch (e) {
-                                              if (context.mounted) {
-                                                ScaffoldMessenger.of(context).showSnackBar(
-                                                  SnackBar(content: Text('Erreur: $e'), backgroundColor: Colors.redAccent),
-                                                );
-                                              }
-                                            }
-                                          },
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                }),
-                              ],
-                            ),
-                          ),
-                        ];
-                      })(),
-
                       const SizedBox(height: 14),
 
                       // ==== DATA STRIP with sparklines ====
@@ -1660,20 +1520,166 @@ class _AdminOrdersTabState extends State<AdminOrdersTab> {
               const Divider(height: 1, color: AmeexColors.divider),
 
               Expanded(
-                child: filtered.isEmpty
-                    ? const AmeexEmptyState(
-                        icon: Icons.inbox_outlined,
-                        title: 'Aucune commande',
-                        hint: 'Aucune commande dans cette catégorie.',
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                  children: [
+                    // BANNER: Commandes acceptées en attente de remise à l'agence
+                    ...(() {
+                      final acceptedWaitingOrders = orders.where((o) {
+                        final rawAddr = o['delivery_address']?.toString() ?? '';
+                        return o['status'] == 'accepted' ||
+                            rawAddr.contains('[ETAT: ACCEPTE_ATTENTE_AGENCE]') ||
+                            rawAddr.contains('ACCEPTE_ATTENTE_AGENCE');
+                      }).toList();
+
+                      if (acceptedWaitingOrders.isEmpty ||
+                          (_selectedStatusFilter != 'all' && _selectedStatusFilter != 'accepted')) {
+                        return <Widget>[];
+                      }
+
+                      return <Widget>[
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 16),
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFFFBEB),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: const Color(0xFFF59E0B), width: 1.5),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFFF59E0B).withValues(alpha: 0.12),
+                                blurRadius: 10,
+                                offset: const Offset(0, 3),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(6),
+                                    decoration: const BoxDecoration(
+                                      color: Color(0xFFD97706),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(Icons.handshake_rounded, color: Colors.white, size: 16),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      '${acceptedWaitingOrders.length} Colis en attente de remise au livreur',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 13.5,
+                                        color: Color(0xFF92400E),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              const Text(
+                                'Le livreur a accepté la mission et attend le colis à l\'agence. Remettez-lui le colis et validez pour qu\'il parte faire sa livraison.',
+                                style: TextStyle(fontSize: 12, color: Color(0xFF78350F), height: 1.3),
+                              ),
+                              const SizedBox(height: 10),
+                              ...acceptedWaitingOrders.map((waitingOrder) {
+                                final wId = waitingOrder['id'];
+                                final wTracking = waitingOrder['tracking_number'] ?? '#AMX';
+                                final wCustomer = waitingOrder['customer_name'] ?? 'Client';
+                                final wRawAddr = waitingOrder['delivery_address']?.toString() ?? '';
+                                final wAmount = waitingOrder['amount'] ?? 0;
+
+                                return Container(
+                                  margin: const EdgeInsets.only(top: 8),
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: const Color(0xFFFDE68A)),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              '$wTracking • $wCustomer ($wAmount MAD)',
+                                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF0F172A)),
+                                            ),
+                                            const SizedBox(height: 2),
+                                            const Text(
+                                              'Livreur prêt pour la remise',
+                                              style: TextStyle(fontSize: 11.5, color: Color(0xFFB45309), fontWeight: FontWeight.w500),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      ElevatedButton.icon(
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: const Color(0xFF10B981),
+                                          foregroundColor: Colors.white,
+                                          elevation: 0,
+                                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                        ),
+                                        icon: const Icon(Icons.check_circle_outline, size: 16),
+                                        label: const Text('Remis au livreur', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5)),
+                                        onPressed: () async {
+                                          try {
+                                            final cleanRaw = wRawAddr
+                                                .replaceAll('[ETAT: ACCEPTE_ATTENTE_AGENCE]', '')
+                                                .replaceAll('  ', ' ')
+                                                .trim();
+                                            await supabase.from('orders').update({
+                                              'status': 'in_transit',
+                                              'delivery_address': '$cleanRaw [COLIS_REMIS_PAR_ADMIN]',
+                                            }).eq('id', wId);
+
+                                            if (context.mounted) {
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                const SnackBar(
+                                                  content: Text('Colis remis au livreur ! Il peut maintenant démarrer son trajet client.'),
+                                                  backgroundColor: Color(0xFF10B981),
+                                                ),
+                                              );
+                                            }
+                                          } catch (e) {
+                                            if (context.mounted) {
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                SnackBar(content: Text('Erreur: $e'), backgroundColor: Colors.redAccent),
+                                              );
+                                            }
+                                          }
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }),
+                            ],
+                          ),
+                        ),
+                      ];
+                    })(),
+
+                    // Regular filtered orders list
+                    if (filtered.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.only(top: 40),
+                        child: AmeexEmptyState(
+                          icon: Icons.inbox_outlined,
+                          title: 'Aucune commande',
+                          hint: 'Aucune commande dans cette catégorie.',
+                        ),
                       )
-                    : ListView.builder(
-                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-                        itemCount: filtered.length,
-                        itemBuilder: (context, index) {
-                          final order = filtered[index];
-                          return _buildOrderCard(context, order, deepNavy);
-                        },
-                      ),
+                    else
+                      ...filtered.map((order) => _buildOrderCard(context, order, deepNavy)),
+                  ],
+                ),
               ),
             ],
           );
