@@ -4,6 +4,15 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+import java.util.Properties
+import java.io.FileInputStream
+
+val keystoreProperties = Properties()
+val keystorePropertiesFile = file("../key.properties")
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+}
+
 android {
     namespace = "com.ameex.ameex"
     compileSdk = 36
@@ -23,9 +32,18 @@ android {
         multiDexEnabled = true
     }
 
+    signingConfigs {
+        create("release") {
+            keyAlias = keystoreProperties.getProperty("keyAlias") ?: "ameex_key"
+            keyPassword = keystoreProperties.getProperty("keyPassword") ?: "ameex123456"
+            storeFile = file(keystoreProperties.getProperty("storeFile") ?: "ameex_release_key.jks")
+            storePassword = keystoreProperties.getProperty("storePassword") ?: "ameex123456"
+        }
+    }
+
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = false
             isShrinkResources = false
         }
